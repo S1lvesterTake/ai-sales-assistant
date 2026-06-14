@@ -10,6 +10,10 @@ export interface LeadInput {
   chatSessionId?: string;
 }
 
+export interface PublicLeadInput extends LeadInput {
+  chatSessionId: string;
+}
+
 export interface Lead extends LeadInput {
   id: string;
   status: LeadStatus;

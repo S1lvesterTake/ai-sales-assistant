@@ -11,23 +11,34 @@ test("serves deterministic API fixtures through MSW in development", async ({
   });
 
   if (!isControlled) await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
 
-  const result = await page.evaluate(async () => {
-    const response = await fetch(
-      "http://localhost:3001/api/public/businesses/kopi-senja-umkm",
-    );
-    return {
-      status: response.status,
-      body: (await response.json()) as {
-        success: boolean;
-        data: { businessName: string };
-      },
-    };
-  });
-
-  expect(result.status).toBe(200);
-  expect(result.body).toMatchObject({
-    success: true,
-    data: { businessName: "Kopi Senja UMKM" },
-  });
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          try {
+            const response = await fetch(
+              "http://localhost:3001/api/public/businesses/kopi-senja-umkm",
+            );
+            const body = (await response.json()) as {
+              success: boolean;
+              data: { businessName: string };
+            };
+            return {
+              status: response.status,
+              success: body.success,
+              businessName: body.data.businessName,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      { timeout: 10_000 },
+    )
+    .toEqual({
+      status: 200,
+      success: true,
+      businessName: "Kopi Senja UMKM",
+    });
 });

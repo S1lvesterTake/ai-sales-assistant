@@ -20,3 +20,14 @@ export interface TopQuestion {
 }
 
 export type RecentLead = Lead;
+
+export type DashboardWidgetResult<T> =
+  | { status: "success"; data: T }
+  | { status: "error" };
+
+export interface DashboardOverviewData {
+  summary: DashboardWidgetResult<DashboardSummary>;
+  recentLeads: DashboardWidgetResult<RecentLead[]>;
+  recentConversations: DashboardWidgetResult<RecentConversation[]>;
+  topQuestions: DashboardWidgetResult<TopQuestion[]>;
+}

@@ -111,7 +111,7 @@ export const leadFixtures: Lead[] = [
 export const chatSessionFixture: ChatSession = {
   sessionId: "019b9d80-7a2e-7b4b-8dc1-7a44b6300040",
   sessionToken: "mock-chat-session-token",
-  expiresAt: "2026-06-14T10:00:00.000Z",
+  expiresAt: "2026-06-15T08:00:00.000Z",
 };
 
 export const chatMessageFixtures: ChatMessage[] = [

@@ -1,5 +1,15 @@
-import { toSearchParams, type ApiClient } from "@/services/api-client";
-import type { Lead, LeadInput, LeadListQuery, LeadStatus } from "@/types/lead";
+import {
+  publicApiClient,
+  toSearchParams,
+  type ApiClient,
+} from "@/services/api-client";
+import type {
+  Lead,
+  LeadInput,
+  LeadListQuery,
+  LeadStatus,
+  PublicLeadInput,
+} from "@/types/lead";
 
 export const leadsService = {
   list(client: ApiClient, query: LeadListQuery = {}) {
@@ -10,6 +20,17 @@ export const leadsService = {
   },
   create(client: ApiClient, input: LeadInput) {
     return client.request<Lead>("/api/leads", { method: "POST", body: input });
+  },
+  createFromChat(
+    input: PublicLeadInput,
+    sessionToken: string,
+    client: ApiClient = publicApiClient,
+  ) {
+    return client.request<Lead>("/api/leads", {
+      method: "POST",
+      body: input,
+      sessionToken,
+    });
   },
   updateStatus(client: ApiClient, id: string, status: LeadStatus) {
     return client.request<Lead>(`/api/leads/${encodeURIComponent(id)}/status`, {

@@ -5,8 +5,8 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Frontend MVP
 - Status: In progress
-- Current part: FE-04 - Public Chatbot
-- Next action: Build the public session, message idempotency, lead capture, and WhatsApp handoff experience
+- Current part: FE-07 - Product Management
+- Next action: Build paginated product listing, URL filters, validated create/edit forms, availability updates, and delete confirmation
 - Last updated: 2026-06-14
 - Canonical requirements: `PRD_AI_Sales_Assistant_for_UMKM.md`
 - Canonical architecture: `CLAUDE.md`
@@ -52,10 +52,10 @@ No part may be skipped silently. Any scope change must be recorded in the Decisi
 | FE-01 | Design System and Application Shell | `COMPLETE` | FE-00 | Lint, typecheck, 9 tests, build, Chromium smoke E2E, desktop/mobile browser QA passed |
 | FE-02 | API, Mocking, and Error Foundation | `COMPLETE` | FE-00 | Lint, typecheck, 27 tests, build, 2 Chromium E2E, audit, and browser MSW contract passed |
 | FE-03 | Public Landing Page | `COMPLETE` | FE-01, FE-02 | Lint, typecheck, 30 tests, build, 2 landing E2E, and desktop/mobile browser QA passed |
-| FE-04 | Public Chatbot | `IN_PROGRESS` | FE-01, FE-02 | Pending |
-| FE-05 | Authentication and Route Protection | `NOT_STARTED` | FE-01, FE-02 | Pending |
-| FE-06 | Dashboard Overview | `NOT_STARTED` | FE-05 | Pending |
-| FE-07 | Product Management | `NOT_STARTED` | FE-05 | Pending |
+| FE-04 | Public Chatbot | `COMPLETE` | FE-01, FE-02 | Lint, typecheck, 49 tests, build, 6 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| FE-05 | Authentication and Route Protection | `COMPLETE` | FE-01, FE-02 | Lint, typecheck, 67 tests, build, 9 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| FE-06 | Dashboard Overview | `COMPLETE` | FE-05 | Lint, typecheck, 72 tests, build, 11 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| FE-07 | Product Management | `IN_PROGRESS` | FE-05 | Pending |
 | FE-08 | FAQ Management | `NOT_STARTED` | FE-05 | Pending |
 | FE-09 | Lead Management | `NOT_STARTED` | FE-04, FE-05 | Pending |
 | FE-10 | Business Settings and Chat Preview | `NOT_STARTED` | FE-05 | Pending |
@@ -327,36 +327,36 @@ npm run build
 
 ## FE-04 - Public Chatbot
 
-**Status:** `IN_PROGRESS`
+**Status:** `COMPLETE`
 
 **Goal:** Deliver the complete public customer chat, lead capture, and WhatsApp handoff flow.
 
 ### Implementation Checklist
 
-- [ ] Resolve public business data from `businessSlug`.
-- [ ] Create a chat session and store its token only in `sessionStorage`.
-- [ ] Restore an active session and load paginated history.
-- [ ] Render suggested questions, customer messages, assistant messages, and timestamps.
-- [ ] Generate one stable `clientMessageId` per submitted customer message.
-- [ ] Handle completed duplicate responses without duplicated UI messages.
-- [ ] Handle HTTP 202 pending responses without starting parallel submissions.
-- [ ] Retry network failures using the same `clientMessageId`.
-- [ ] Handle expired or invalid chat session tokens by offering a new session.
-- [ ] Add loading, empty, rate-limit, timeout, fallback, and unexpected-error states.
-- [ ] Add lead capture form when requested by chatbot response state.
-- [ ] Validate Indonesian name and phone input for usability while preserving backend authority.
-- [ ] Show WhatsApp CTA when indicated by the response.
-- [ ] Track WhatsApp click before navigation without blocking the user.
-- [ ] Add an ARIA live region and keyboard-friendly message composer.
-- [ ] Prevent duplicate send from rapid clicks or Enter-key repetition.
+- [x] Resolve public business data from `businessSlug`.
+- [x] Create a chat session and store its token only in `sessionStorage`.
+- [x] Restore an active session and load paginated history.
+- [x] Render suggested questions, customer messages, assistant messages, and timestamps.
+- [x] Generate one stable `clientMessageId` per submitted customer message.
+- [x] Handle completed duplicate responses without duplicated UI messages.
+- [x] Handle HTTP 202 pending responses without starting parallel submissions.
+- [x] Retry network failures using the same `clientMessageId`.
+- [x] Handle expired or invalid chat session tokens by offering a new session.
+- [x] Add loading, empty, rate-limit, timeout, fallback, and unexpected-error states.
+- [x] Add lead capture form when requested by chatbot response state.
+- [x] Validate Indonesian name and phone input for usability while preserving backend authority.
+- [x] Show WhatsApp CTA when indicated by the response.
+- [x] Track WhatsApp click before navigation without blocking the user.
+- [x] Add an ARIA live region and keyboard-friendly message composer.
+- [x] Prevent duplicate send from rapid clicks or Enter-key repetition.
 
 ### Acceptance Gate
 
-- [ ] Customer can start a session, send messages, and receive Bahasa Indonesia responses.
-- [ ] Session token is absent from URL and persistent local storage.
-- [ ] Duplicate and pending requests do not duplicate visible messages or side effects.
-- [ ] Lead capture and WhatsApp handoff work.
-- [ ] Expired session recovery is understandable and safe.
+- [x] Customer can start a session, send messages, and receive Bahasa Indonesia responses.
+- [x] Session token is absent from URL and persistent local storage.
+- [x] Duplicate and pending requests do not duplicate visible messages or side effects.
+- [x] Lead capture and WhatsApp handoff work.
+- [x] Expired session recovery is understandable and safe.
 
 ### Verification Commands
 
@@ -370,37 +370,37 @@ npm run build
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-14
+- Changed files: `frontend/app/chat/[businessSlug]/page.tsx`, `frontend/app/demo-chat/page.tsx`, `frontend/components/chat/*`, `frontend/components/marketing/tracked-whatsapp-link.tsx`, `frontend/components/ui/label.tsx`, `frontend/lib/chat-session.ts`, `frontend/lib/validation/phone.ts`, `frontend/services/leads.service.ts`, `frontend/types/lead.ts`, mock fixtures/handlers, package manifests, Jest tests, and `frontend/e2e/chat.spec.ts`
+- Test evidence: ESLint and strict TypeScript passed; 49 Jest tests passed; production build passed; all 6 Chromium E2E tests passed, including 2 chat flows; npm audit reported 0 vulnerabilities; in-app browser QA passed at desktop and 390px with no horizontal overflow or console warnings/errors
+- Decisions: Keep the raw public token exclusively in per-business `sessionStorage`; use a feature-local reducer and synchronous send lock; poll bounded HTTP 202 responses using the same UUID; normalize Indonesian phone numbers before submission; keep WhatsApp tracking best-effort and native navigation non-blocking
+- Risks or follow-up: Live NestJS/Swagger contract verification remains FE-11; the deterministic MSW provider simulates idempotency and fallback but automated tests never invoke a live AI provider
 
 ## FE-05 - Authentication and Route Protection
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 
 **Goal:** Provide secure demo login and protect every dashboard route.
 
 ### Implementation Checklist
 
-- [ ] Build accessible login form with demo credential helper.
-- [ ] Submit credentials through a Server Action or same-origin route handler.
-- [ ] Store JWT in a secure `HttpOnly`, `SameSite=Lax` cookie; enable `Secure` in production.
-- [ ] Validate the session server-side using the current-user endpoint.
-- [ ] Protect dashboard layouts and preserve a validated relative return URL.
-- [ ] Reject open redirects.
-- [ ] Handle invalid credentials, expired token, backend outage, and logout.
-- [ ] Redirect authenticated users away from login where appropriate.
-- [ ] Redirect users without a profile to settings/onboarding.
-- [ ] Ensure authentication errors do not expose technical details.
+- [x] Build accessible login form with demo credential helper.
+- [x] Submit credentials through a Server Action or same-origin route handler.
+- [x] Store JWT in a secure `HttpOnly`, `SameSite=Lax` cookie; enable `Secure` in production.
+- [x] Validate the session server-side using the current-user endpoint.
+- [x] Protect dashboard layouts and preserve a validated relative return URL.
+- [x] Reject open redirects.
+- [x] Handle invalid credentials, expired token, backend outage, and logout.
+- [x] Redirect authenticated users away from login where appropriate.
+- [x] Redirect users without a profile to settings/onboarding.
+- [x] Ensure authentication errors do not expose technical details.
 
 ### Acceptance Gate
 
-- [ ] Unauthenticated users cannot render protected dashboard content.
-- [ ] JWT is never readable by browser JavaScript.
-- [ ] Expired sessions return users to login with a clear message.
-- [ ] Demo login flow works end to end with mocks.
+- [x] Unauthenticated users cannot render protected dashboard content.
+- [x] JWT is never readable by browser JavaScript.
+- [x] Expired sessions return users to login with a clear message.
+- [x] Demo login flow works end to end with mocks.
 
 ### Verification Commands
 
@@ -414,36 +414,36 @@ npm run build
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-14
+- Changed files: auth Route Handlers, `frontend/proxy.ts`, server-only auth/session utilities, login UI, protected dashboard layouts and placeholders, dashboard shell account/logout integration, server env template, root layout scroll declaration, auth Jest tests, and `frontend/e2e/auth.spec.ts`
+- Test evidence: Next route types, ESLint, and strict TypeScript passed; 67 Jest tests passed; production build passed; all 9 Chromium E2E tests passed, including 3 auth security flows; npm audit reported 0 vulnerabilities; in-app browser login/dashboard QA passed on desktop and 390px with no overflow or console warnings/errors
+- Decisions: Use same-origin Route Handlers as a backend-for-frontend boundary; store only the raw JWT in a secure HttpOnly cookie; use Next 16 `proxy.ts` for optimistic cookie-presence redirects and server layouts for authoritative `/auth/me` validation; restrict return targets to `/dashboard`; keep no-profile onboarding outside the business-required route group
+- Risks or follow-up: Live NestJS auth/profile contract verification and production HTTPS cookie behavior remain FE-11/FE-12 integration gates; mock-only auth tokens are isolated from the client bundle
 
 ## FE-06 - Dashboard Overview
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 
 **Goal:** Present useful business activity without loading unbounded data or adding unnecessary chart dependencies.
 
 ### Implementation Checklist
 
-- [ ] Add total leads, new leads, total chat sessions, and WhatsApp clicks summary cards.
-- [ ] Add recent leads.
-- [ ] Add recent conversations.
-- [ ] Add most asked questions.
-- [ ] Add skeleton, empty, partial-error, and full-error states.
-- [ ] Add retry behavior for recoverable failures.
-- [ ] Use server rendering for initial dashboard data.
-- [ ] Keep recent lists bounded and link to detailed pages.
-- [ ] Add responsive layout and accessible labels for metrics.
+- [x] Add total leads, new leads, total chat sessions, and WhatsApp clicks summary cards.
+- [x] Add recent leads.
+- [x] Add recent conversations.
+- [x] Add most asked questions.
+- [x] Add skeleton, empty, partial-error, and full-error states.
+- [x] Add retry behavior for recoverable failures.
+- [x] Use server rendering for initial dashboard data.
+- [x] Keep recent lists bounded and link to detailed pages.
+- [x] Add responsive layout and accessible labels for metrics.
 
 ### Acceptance Gate
 
-- [ ] Dashboard uses real service data rather than hardcoded page data.
-- [ ] Empty accounts remain useful and understandable.
-- [ ] One failed widget does not unnecessarily hide successful widgets.
-- [ ] No chart dependency is added for the MVP.
+- [x] Dashboard uses real service data rather than hardcoded page data.
+- [x] Empty accounts remain useful and understandable.
+- [x] One failed widget does not unnecessarily hide successful widgets.
+- [x] No chart dependency is added for the MVP.
 
 ### Verification Commands
 
@@ -457,15 +457,15 @@ npm run build
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-14
+- Changed files: server dashboard loader and result types, dashboard overview/retry components, protected dashboard page/loading UI, dashboard service fixture integration, Jest overview/server-loader tests, auth E2E heading update, and `frontend/e2e/dashboard.spec.ts`
+- Test evidence: Next route types, ESLint, and strict TypeScript passed; 72 Jest tests passed; production build passed; all 11 Chromium E2E tests passed, including 2 dashboard flows; npm audit reported 0 vulnerabilities; in-app browser QA passed on desktop and 390px with no overflow or console warnings/errors
+- Decisions: Fetch the four aggregate/recent endpoints concurrently on the server; isolate failures with `Promise.allSettled`; cap each displayed activity list at five records; preserve native link semantics for detail navigation; use semantic `dl`, table, lists, and no chart dependency
+- Risks or follow-up: Live backend must guarantee fixed bounds and aggregate-query implementation; frontend defensively limits rendered records, while SQL/index verification remains backend and FE-11 scope
 
 ## FE-07 - Product Management
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS`
 
 **Goal:** Allow owners to manage product knowledge used by the chatbot.
 
@@ -762,11 +762,11 @@ These checks apply to every applicable part:
 
 | Dependency | Needed By | Frontend Strategy Before Backend Exists | Status |
 |---|---|---|---|
-| Public business endpoint | FE-03, FE-04 | MSW contract fixture | Pending |
-| Public chat session and message endpoints | FE-04 | MSW stateful handlers | Pending |
-| WhatsApp link and click endpoints | FE-03, FE-04 | MSW tracking handler | Pending |
-| Auth login and current-user endpoints | FE-05 | Same-origin auth mock | Pending |
-| Dashboard endpoints | FE-06 | MSW aggregate fixtures | Pending |
+| Public business endpoint | FE-03, FE-04 | MSW contract fixture | Mock complete; live backend pending |
+| Public chat session and message endpoints | FE-04 | MSW stateful handlers | Mock complete; live backend pending |
+| WhatsApp link and click endpoints | FE-03, FE-04 | MSW tracking handler | Mock complete; live backend pending |
+| Auth login and current-user endpoints | FE-05 | Same-origin auth mock | Mock complete; live backend pending |
+| Dashboard endpoints | FE-06 | MSW aggregate fixtures | Mock complete; live backend pending |
 | Product endpoints | FE-07 | MSW CRUD handlers | Pending |
 | FAQ endpoints | FE-08 | MSW CRUD handlers | Pending |
 | Lead endpoints | FE-09 | MSW CRUD and duplicate handler | Pending |
@@ -786,6 +786,9 @@ These checks apply to every applicable part:
 | 2026-06-14 | FE-02 | Resolve global fetch at request time | MSW and runtime adapters must be able to intercept singleton clients after module evaluation | Service clients work identically with mock and real transports |
 | 2026-06-14 | FE-02 | Fail closed on malformed API envelopes | Typed compile-time contracts do not protect against invalid network payloads | Invalid success, error, and pagination shapes become user-safe client errors |
 | 2026-06-14 | FE-03 | Keep WhatsApp CTA as a native anchor | Tracking must never block or replace the user's navigation intent | Analytics failure is silent and the destination remains available |
+| 2026-06-14 | FE-04 | Keep chat identity and retry state feature-local | Public sessions require a raw browser token and stable message UUID without introducing global state | Session data stays in `sessionStorage`; retries reuse the original `clientMessageId` |
+| 2026-06-14 | FE-05 | Use a same-origin BFF boundary with optimistic Proxy checks and authoritative server validation | JWT must remain unreadable to browser JavaScript while every protected render still verifies the backend session | Route Handlers own cookie mutation; dashboard layouts call `/auth/me`; redirects accept only dashboard-relative targets |
+| 2026-06-14 | FE-06 | Load dashboard widgets concurrently and isolate failures | Aggregate and recent endpoints are independent and one outage must not hide successful business data | `Promise.allSettled` feeds per-widget success/error states; rendered recent lists are capped at five |
 
 ## Progress Log
 
@@ -803,19 +806,25 @@ Add one entry whenever a part changes status.
 | 2026-06-14 | FE-03 | `NOT_STARTED` | `IN_PROGRESS` | Started complete public landing page and conversion flow | FE-01 and FE-02 dependencies complete |
 | 2026-06-14 | FE-03 | `IN_PROGRESS` | `COMPLETE` | Completed responsive public landing page, demo previews, portfolio proof, and conversion paths | Lint, typecheck, 30 tests, build, 2 landing E2E, and desktop/mobile browser QA passed |
 | 2026-06-14 | FE-04 | `NOT_STARTED` | `IN_PROGRESS` | Activated public chatbot implementation after landing completion | FE-01 and FE-02 dependencies complete |
+| 2026-06-14 | FE-04 | `IN_PROGRESS` | `COMPLETE` | Completed public session, idempotent message, lead capture, and WhatsApp handoff flows | Lint, typecheck, 49 tests, build, 6 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| 2026-06-14 | FE-05 | `NOT_STARTED` | `IN_PROGRESS` | Started secure authentication and dashboard route protection | FE-01 and FE-02 dependencies complete; FE-04 public flow complete |
+| 2026-06-14 | FE-05 | `IN_PROGRESS` | `COMPLETE` | Completed secure login, HttpOnly session, server validation, route protection, expiry recovery, onboarding, and logout | Lint, typecheck, 67 tests, build, 9 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| 2026-06-14 | FE-06 | `NOT_STARTED` | `IN_PROGRESS` | Started server-rendered dashboard overview and bounded activity sections | FE-05 authentication and protected shell complete |
+| 2026-06-14 | FE-06 | `IN_PROGRESS` | `COMPLETE` | Completed aggregate metrics, bounded recent activity, empty/loading/error states, and responsive overview | Lint, typecheck, 72 tests, build, 11 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| 2026-06-14 | FE-07 | `NOT_STARTED` | `IN_PROGRESS` | Started complete product knowledge management flow | FE-05 authentication and dashboard shell complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 4 / 13
-- Unit coverage: Pending
-- Critical-flow coverage: Pending
-- E2E result: Pending
-- Production build: Pending
+- Completed parts: 7 / 13
+- Unit coverage: Latest gate passed with 72 Jest tests
+- Critical-flow coverage: Public and auth flows plus server dashboard metrics, bounded activity, empty states, partial failures, full failures, retry, and mobile layout covered
+- E2E result: Latest gate passed with 11 Chromium tests
+- Production build: Latest gate passed
 - Docker build: Pending
 - Docker Compose: Pending
-- Accessibility review: Pending
-- Responsive review: Pending
-- Security review: Pending
-- Performance review: Pending
-- Remaining risks: Pending
+- Accessibility review: FE-00 through FE-04 reviewed; final audit pending FE-12
+- Responsive review: FE-00 through FE-04 passed desktop/mobile browser QA; full route matrix pending FE-12
+- Security review: Public token boundaries, HttpOnly JWT storage, same-origin mutation routes, safe redirects, and authoritative dashboard session validation reviewed
+- Performance review: Bounded history/polling plus concurrent aggregate dashboard loading and five-item activity rendering reviewed; final bundle review pending FE-12
+- Remaining risks: Live backend contract and full Docker Compose integration remain pending FE-11/FE-12

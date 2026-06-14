@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { SiteHeader } from "@/components/layout/site-header";
+import { demoUser } from "@/mocks/fixtures";
 
 jest.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/products",
@@ -25,7 +26,7 @@ describe("application shells", () => {
 
   it("marks the current dashboard destination", () => {
     render(
-      <DashboardShell>
+      <DashboardShell businessName="Kopi Senja UMKM" user={demoUser}>
         <h1>Daftar produk</h1>
       </DashboardShell>,
     );
