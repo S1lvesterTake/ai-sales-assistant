@@ -3,11 +3,13 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Param,
   Post,
   Query,
 } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiCreatedResponse,
   ApiHeader,
   ApiNotFoundResponse,
@@ -20,9 +22,11 @@ import {
 import { ResponseMessage } from '../../common/decorators/response-message.decorator';
 import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
 import { ChatService } from './chat.service';
+import { ChatReplyEnvelopeDto } from './dto/chat-reply-response.dto';
 import { ChatSessionEnvelopeDto } from './dto/chat-session-response.dto';
 import { ChatHistoryQueryDto } from './dto/chat-history-query.dto';
 import { CreateChatSessionDto } from './dto/create-chat-session.dto';
+import { SendMessageInput } from './dto/send-message.dto';
 
 @ApiTags('Public Chat')
 @Controller('public/businesses/:businessSlug/chat')
@@ -40,6 +44,29 @@ export class ChatController {
     @Body() input: CreateChatSessionDto,
   ) {
     return this.service.createSession(businessSlug, input);
+  }
+
+  @Post('sessions/:sessionId/messages')
+  @HttpCode(200)
+  @ResponseMessage('Message processed successfully')
+  @ApiHeader({
+    name: 'X-Chat-Session-Token',
+    required: true,
+    description: 'Raw chat session token from session creation',
+  })
+  @ApiOperation({ summary: 'Send a message and get AI response' })
+  @ApiCreatedResponse({ type: ChatReplyEnvelopeDto })
+  @ApiAcceptedResponse({ description: 'Duplicate message still processing' })
+  @ApiUnauthorizedResponse({ type: ApiErrorResponseDto })
+  @ApiNotFoundResponse({ type: ApiErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
+  sendMessage(
+    @Param('businessSlug') businessSlug: string,
+    @Param('sessionId') sessionId: string,
+    @Headers('x-chat-session-token') token: string,
+    @Body() input: SendMessageInput,
+  ) {
+    return this.service.sendMessage(businessSlug, sessionId, token, input);
   }
 
   @Get('sessions/:sessionId/messages')

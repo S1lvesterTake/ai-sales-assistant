@@ -106,6 +106,12 @@ export function validateEnvironment(
       'CHAT_SESSION_TTL',
       86_400,
     ),
+    CHAT_STALE_CLAIM_MS: readPositiveInteger(
+      environment,
+      'CHAT_STALE_CLAIM_MS',
+      30_000,
+    ),
+    AI_TIMEOUT_MS: readPositiveInteger(environment, 'AI_TIMEOUT_MS', 8_000),
     CHAT_SESSION_CREATE_LIMIT: readPositiveInteger(
       environment,
       'CHAT_SESSION_CREATE_LIMIT',

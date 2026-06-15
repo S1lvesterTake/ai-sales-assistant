@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-07 - AI Provider and Idempotent Chat Processing
+- Current part: BE-08 - Lead Capture and Management
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -122,8 +122,8 @@ Excluded until a separate integration task:
 | BE-04 | Business Profile and Demo Operations | COMPLETE | BE-03 | Private/public profile, seed, and reset tests |
 | BE-05 | Product and FAQ Knowledge Management | COMPLETE | BE-04 | Ownership-scoped CRUD and pagination tests |
 | BE-06 | Public Chat Session Security | COMPLETE | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
-| BE-07 | AI Provider and Idempotent Chat Processing | IN_PROGRESS | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
-| BE-08 | Lead Capture and Management | NOT_STARTED | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
+| BE-07 | AI Provider and Idempotent Chat Processing | COMPLETE | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
+| BE-08 | Lead Capture and Management | IN_PROGRESS | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | NOT_STARTED | BE-04, BE-06, BE-08 | Relation authorization and URL tests |
 | BE-10 | Dashboard and Owner Conversation Reads | NOT_STARTED | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
 | BE-11 | Standalone Hardening and Delivery | NOT_STARTED | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
@@ -699,11 +699,11 @@ Goal: Implement the complete chat state machine, provider abstraction, prompt ge
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: AI module (interface, FakeAiProvider, OpenAiProvider, module with factory); PromptBuilderService (Indonesian system prompt, keyword-aware product/FAQ context selection); BuyingIntentService (Indonesian/English keyword matching, product name detection); ChatProcessingService (insert-or-claim, stale reclaim, duplicate idempotency, fallback persistence, no-transaction-during-AI-call); SendMessageInput DTO and ChatReplyResponse DTO; updated ChatService with sendMessage wiring; updated ChatController with @HttpCode(200) POST message endpoint; env validation for AI_PROVIDER, OPENAI_API_KEY/MODEL, AI_TIMEOUT_MS, CHAT_STALE_CLAIM_MS; test setup uses AI_PROVIDER=fake; integration tests for message processing, duplicate idempotency, history, buying intent metadata
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; 75 PostgreSQL integration tests passed (chat processing 7 new, plus existing 68); 7 E2E tests passed; production build passed
+- Decisions: Abstract AI provider behind symbol-based injection token (AI_PROVIDER) with config-driven factory selecting fake/openai; use SELECT-before-INSERT for duplicate detection (relies on unique index as safety net); store buying intent metadata in assistant message jsonb for idempotent retry responses; derive WhatsApp URL from canonical business phone; default to @HttpCode(200) for message POST with HttpException(202) for pending duplicates; use keyword extraction from user message for product/FAQ context selection with bounded fallback; persisted fallback response on any AI provider failure
+- Risks or follow-up: OpenAI provider uses native fetch (Node 24+) and AbortController for timeout; concurrent duplicate test (two simultaneous first requests) is deferred — the SELECT-before-INSERT approach has a small race window protected by the unique index; stale claim reclaim uses a simple timestamp comparison without row locking
 
 ## BE-08 - Lead Capture and Management
 
@@ -1008,6 +1008,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-04 | IN_PROGRESS | COMPLETE | Completed business profile management, phone normalization, public slug resolution, demo seed/reset, and guarded demo identity protection | Lint, typecheck, 41 unit, 22 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-05 | NOT_STARTED | COMPLETE | Completed products and FAQs CRUD with ownership scoping, pagination, search, and cross-owner isolation | Lint, typecheck, 41 unit, 55 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-06 | NOT_STARTED | COMPLETE | Completed public chat session security with SHA-256 token hashing, X-Chat-Session-Token auth, and slug-validated history | Lint, typecheck, 41 unit, 68 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-07 | NOT_STARTED | COMPLETE | Completed AI provider abstraction, prompt builder, buying intent, idempotent chat processing, and fallback | Lint, typecheck, 41 unit, 75 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 

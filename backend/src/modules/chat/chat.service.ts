@@ -13,6 +13,7 @@ import {
   normalizeIndonesianPhone,
 } from '../../common/utils/indonesian-phone';
 import { ChatSessionAuthService } from './chat-session-auth.service';
+import { ChatProcessingService } from './chat-processing.service';
 import {
   ChatMessageRecord,
   ChatSessionsRepository,
@@ -20,12 +21,14 @@ import {
 import { generateSessionToken } from './session-token.utils';
 import type { CreateChatSessionDto } from './dto/create-chat-session.dto';
 import type { ChatHistoryQueryDto } from './dto/chat-history-query.dto';
+import { SendMessageInput } from './dto/send-message.dto';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly repository: ChatSessionsRepository,
     private readonly auth: ChatSessionAuthService,
+    private readonly processing: ChatProcessingService,
     private readonly database: DatabaseService,
     private readonly config: ConfigService,
   ) {}
@@ -49,6 +52,36 @@ export class ChatService {
       sessionId: session.id,
       sessionToken: raw,
       expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async sendMessage(
+    businessSlug: string,
+    sessionId: string,
+    rawToken: string,
+    input: SendMessageInput,
+  ) {
+    const profile = await this.resolveBusinessWithWhatsapp(businessSlug);
+
+    if (!rawToken) {
+      throw new UnauthorizedException({
+        message: 'Token sesi diperlukan',
+        code: 'MISSING_CHAT_SESSION_TOKEN',
+      });
+    }
+
+    await this.auth.authorize(sessionId, profile.id, rawToken);
+
+    const reply = await this.processing.processMessage(
+      sessionId,
+      profile.id,
+      profile.whatsappNumber,
+      input,
+    );
+
+    return {
+      success: true as const,
+      data: reply,
     };
   }
 
@@ -104,6 +137,39 @@ export class ChatService {
 
     const [profile] = await this.database.db
       .select({ id: businessProfiles.id, slug: businessProfiles.slug })
+      .from(businessProfiles)
+      .where(eq(businessProfiles.slug, slug))
+      .limit(1);
+
+    if (!profile) {
+      throw new NotFoundException({
+        message: 'Bisnis tidak ditemukan',
+        code: 'BUSINESS_NOT_FOUND',
+      });
+    }
+    return profile;
+  }
+
+  private async resolveBusinessWithWhatsapp(slug: string) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      throw new UnprocessableEntityException({
+        message: 'Format slug bisnis tidak valid',
+        code: 'VALIDATION_ERROR',
+        errors: [
+          {
+            field: 'businessSlug',
+            message: 'Slug harus berupa huruf kecil, angka, dan tanda hubung',
+          },
+        ],
+      });
+    }
+
+    const [profile] = await this.database.db
+      .select({
+        id: businessProfiles.id,
+        slug: businessProfiles.slug,
+        whatsappNumber: businessProfiles.whatsappNumber,
+      })
       .from(businessProfiles)
       .where(eq(businessProfiles.slug, slug))
       .limit(1);
