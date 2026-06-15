@@ -76,8 +76,10 @@ describe('Health API (e2e)', () => {
         );
         expect(serialized).toContain('"/api/leads"');
         expect(serialized).toContain('"/api/leads/{id}/status"');
+        expect(serialized).toContain('"/api/leads/from-chat/{businessSlug}"');
+        expect(serialized).toContain('"/api/dashboard/summary"');
         expect(serialized).toContain(
-          '"/api/leads/from-chat/{businessSlug}"',
+          '"/api/dashboard/conversations/{sessionId}/messages"',
         );
       });
   });

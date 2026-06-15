@@ -13,6 +13,7 @@ import { ErrorLogService } from './modules/error-log/error-log.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { BusinessProfileModule } from './modules/business-profile/business-profile.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FaqsModule } from './modules/faqs/faqs.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { HealthModule } from './modules/health/health.module';
@@ -42,6 +43,7 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     AuthModule,
     BusinessProfileModule,
     ChatModule,
+    DashboardModule,
     FaqsModule,
     LeadsModule,
     ProductsModule,

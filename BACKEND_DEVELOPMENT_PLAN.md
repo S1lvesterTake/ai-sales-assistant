@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-10 - Dashboard and Owner Conversation Reads
+- Current part: BE-11 - Standalone Hardening and Delivery
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -125,8 +125,8 @@ Excluded until a separate integration task:
 | BE-07 | AI Provider and Idempotent Chat Processing | COMPLETE | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
 | BE-08 | Lead Capture and Management | COMPLETE | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | COMPLETE | BE-04, BE-06 | Relation authorization and URL tests |
-| BE-10 | Dashboard and Owner Conversation Reads | NOT_STARTED | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
-| BE-11 | Standalone Hardening and Delivery | NOT_STARTED | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
+| BE-10 | Dashboard and Owner Conversation Reads | COMPLETE | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
+| BE-11 | Standalone Hardening and Delivery | IN_PROGRESS | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
 
 ## Locked Backend Decisions
 
@@ -838,11 +838,11 @@ Goal: Provide fast owner-facing aggregates and safe conversation context without
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Dashboard module (controller, service, repository, response DTO); AppModule registered DashboardModule; integration tests for summary aggregates, recent leads, recent conversations, top questions, owner conversation history, cross-owner protection; E2E Swagger contract updated
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; integration tests require Docker (PostgreSQL container); 7 E2E tests passed; production build passed
+- Decisions: Use Drizzle $count for aggregate queries (totalLeads, newLeads, totalChatSessions, whatsappClicks) run in parallel via Promise.all; derive recent conversations by selecting latest sessions then fetching each session's last customer message (N+1 accepted for widget bounded to 5-20 items); top questions use GROUP BY with COUNT on customer messages joined to sessions; widget endpoints default to 5 items with hard max of 20; owner conversation history reuses ChatSessionsRepository for ownership-scoped paginated access; cross-owner conversation access returns 404
+- Risks or follow-up: Recent conversations query performs one additional query per session (N+1), acceptable for the small widget bounds (max 20); top questions GROUP BY could be expensive with very large message volumes — MVP bounded limit mitigates this
 
 ## BE-11 - Standalone Hardening and Delivery
 
@@ -1011,6 +1011,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-07 | NOT_STARTED | COMPLETE | Completed AI provider abstraction, prompt builder, buying intent, idempotent chat processing, and fallback | Lint, typecheck, 41 unit, 75 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-09 | NOT_STARTED | COMPLETE | Completed WhatsApp wa.me link generation, click tracking with context-free and session-authorized modes | Lint, typecheck, 41 unit, 86 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-08 | IN_PROGRESS | COMPLETE | Completed lead capture with dual auth (JWT + chat token), phone normalization, duplicate prevention, list/search/filter/status | Lint, typecheck, 41 unit, 103 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-10 | NOT_STARTED | COMPLETE | Completed dashboard aggregates, recent leads/conversations, top questions, and owner conversation history | Lint, typecheck, 41 unit, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 
