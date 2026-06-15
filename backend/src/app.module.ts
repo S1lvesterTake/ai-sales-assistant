@@ -12,6 +12,7 @@ import { DemoDataModule } from './database/seeds/demo-data.module';
 import { ErrorLogService } from './modules/error-log/error-log.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { BusinessProfileModule } from './modules/business-profile/business-profile.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { FaqsModule } from './modules/faqs/faqs.module';
 import { HealthModule } from './modules/health/health.module';
 import { OwnershipModule } from './common/ownership/ownership.module';
@@ -38,6 +39,7 @@ import { ProductsModule } from './modules/products/products.module';
     OwnershipModule,
     AuthModule,
     BusinessProfileModule,
+    ChatModule,
     FaqsModule,
     ProductsModule,
     HealthModule,

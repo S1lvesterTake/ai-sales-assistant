@@ -101,6 +101,21 @@ export function validateEnvironment(
     ),
     JWT_SECRET: readJwtSecret(environment),
     JWT_EXPIRES_IN: readPositiveInteger(environment, 'JWT_EXPIRES_IN', 3_600),
+    CHAT_SESSION_TTL: readPositiveInteger(
+      environment,
+      'CHAT_SESSION_TTL',
+      86_400,
+    ),
+    CHAT_SESSION_CREATE_LIMIT: readPositiveInteger(
+      environment,
+      'CHAT_SESSION_CREATE_LIMIT',
+      10,
+    ),
+    CHAT_MESSAGE_LIMIT: readPositiveInteger(
+      environment,
+      'CHAT_MESSAGE_LIMIT',
+      20,
+    ),
     DEMO_DATA_RESET_ON_DEPLOY: readBoolean(
       environment,
       'DEMO_DATA_RESET_ON_DEPLOY',

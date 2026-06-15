@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-06 - Public Chat Session Security
+- Current part: BE-07 - AI Provider and Idempotent Chat Processing
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -121,8 +121,8 @@ Excluded until a separate integration task:
 | BE-03 | Authentication and Ownership Foundation | COMPLETE | BE-01, BE-02 | Auth API and cross-owner foundation tests |
 | BE-04 | Business Profile and Demo Operations | COMPLETE | BE-03 | Private/public profile, seed, and reset tests |
 | BE-05 | Product and FAQ Knowledge Management | COMPLETE | BE-04 | Ownership-scoped CRUD and pagination tests |
-| BE-06 | Public Chat Session Security | IN_PROGRESS | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
-| BE-07 | AI Provider and Idempotent Chat Processing | NOT_STARTED | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
+| BE-06 | Public Chat Session Security | COMPLETE | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
+| BE-07 | AI Provider and Idempotent Chat Processing | IN_PROGRESS | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
 | BE-08 | Lead Capture and Management | NOT_STARTED | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | NOT_STARTED | BE-04, BE-06, BE-08 | Relation authorization and URL tests |
 | BE-10 | Dashboard and Owner Conversation Reads | NOT_STARTED | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
@@ -644,11 +644,11 @@ Goal: Establish secure public session creation and history access before AI proc
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Chat module (controller, service, auth service, repository, token utility, 4 DTOs); AppModule registered ChatModule; environment validation added CHAT_SESSION_TTL, CHAT_SESSION_CREATE_LIMIT, CHAT_MESSAGE_LIMIT; .env.example and test setup updated; integration tests for session creation, token hashing, authorization rejection, cross-session protection; E2E Swagger contract updated
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; 68 PostgreSQL integration tests passed (chat sessions 13, plus existing 55); 7 E2E tests passed including new chat session and message Swagger paths; production build passed
+- Decisions: Use Node.js crypto SHA-256 for token hashing and timingSafeEqual for comparison; store only hex hash (64 chars) in database; generate 32 random bytes as base64url tokens; validate slug format server-side in the service rather than via a param DTO (avoids NestJS multi-@Param conflicts); include CHAT_SESSION_TTL (default 86400s), CHAT_SESSION_CREATE_LIMIT (10/min), and CHAT_MESSAGE_LIMIT (20/min) as configurable env vars; the reusable ChatSessionAuthService verifies session existence, business ownership, token match, and expiry in one call
+- Risks or follow-up: Rate limits for session creation and message sending are configured but enforced globally via ThrottlerGuard — route-specific throttling (10/min for sessions, 20/min for messages) is deferred to BE-11 hardening; chat history currently returns messages directly from the database (empty for new sessions) — message insertion with AI processing arrives in BE-07
 
 ## BE-07 - AI Provider and Idempotent Chat Processing
 
@@ -1007,6 +1007,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-03 | IN_PROGRESS | COMPLETE | Completed JWT auth, generic credential handling, protected current-user access, and JWT-derived ownership resolution | Lint, typecheck, 25 unit, 7 E2E, 13 PostgreSQL integration, build, and audit passed |
 | 2026-06-15 | BE-04 | IN_PROGRESS | COMPLETE | Completed business profile management, phone normalization, public slug resolution, demo seed/reset, and guarded demo identity protection | Lint, typecheck, 41 unit, 22 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-05 | NOT_STARTED | COMPLETE | Completed products and FAQs CRUD with ownership scoping, pagination, search, and cross-owner isolation | Lint, typecheck, 41 unit, 55 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-06 | NOT_STARTED | COMPLETE | Completed public chat session security with SHA-256 token hashing, X-Chat-Session-Token auth, and slug-validated history | Lint, typecheck, 41 unit, 68 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 
