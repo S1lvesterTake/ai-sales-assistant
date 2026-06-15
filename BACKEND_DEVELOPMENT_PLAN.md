@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-09 - WhatsApp Link and Click Tracking
+- Current part: BE-10 - Dashboard and Owner Conversation Reads
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -123,7 +123,7 @@ Excluded until a separate integration task:
 | BE-05 | Product and FAQ Knowledge Management | COMPLETE | BE-04 | Ownership-scoped CRUD and pagination tests |
 | BE-06 | Public Chat Session Security | COMPLETE | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
 | BE-07 | AI Provider and Idempotent Chat Processing | COMPLETE | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
-| BE-08 | Lead Capture and Management | IN_PROGRESS | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
+| BE-08 | Lead Capture and Management | COMPLETE | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | COMPLETE | BE-04, BE-06 | Relation authorization and URL tests |
 | BE-10 | Dashboard and Owner Conversation Reads | NOT_STARTED | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
 | BE-11 | Standalone Hardening and Delivery | NOT_STARTED | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
@@ -750,11 +750,11 @@ Goal: Implement secure manual and public-chat lead creation plus complete owner 
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Leads module (controller, service, repository, 4 DTOs); AppModule registered LeadsModule; integration tests for JWT manual creation, chat-token public creation, phone normalization, duplicate detection, list/search/filter/status, status transitions; E2E Swagger contract updated
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; 103 PostgreSQL integration tests passed (leads 17 new, plus existing 86); 7 E2E tests passed; production build passed; npm audit reported 0 vulnerabilities
+- Decisions: Split lead creation into two endpoints: POST /api/leads (JWT-guarded for manual) and POST /api/leads/from-chat/:businessSlug (chat-token for public); source is set server-side ("manual" vs "chatbot"); phone normalized to canonical 62... format before storage; unique (business_profile_id, phone) constraint with 409 conflict translation; reuse BusinessOwnershipService for JWT ownership resolution and ChatSessionAuthService for chat token verification; status transitions accept all five valid statuses
+- Risks or follow-up: No cross-session lead validation yet (BE-09 WhatsApp already records leadId context); lead detail does not yet include linked conversation snippets (deferred to BE-10 dashboard)
 
 ## BE-09 - WhatsApp Link and Click Tracking
 
@@ -1010,6 +1010,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-06 | NOT_STARTED | COMPLETE | Completed public chat session security with SHA-256 token hashing, X-Chat-Session-Token auth, and slug-validated history | Lint, typecheck, 41 unit, 68 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-07 | NOT_STARTED | COMPLETE | Completed AI provider abstraction, prompt builder, buying intent, idempotent chat processing, and fallback | Lint, typecheck, 41 unit, 75 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-09 | NOT_STARTED | COMPLETE | Completed WhatsApp wa.me link generation, click tracking with context-free and session-authorized modes | Lint, typecheck, 41 unit, 86 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-08 | IN_PROGRESS | COMPLETE | Completed lead capture with dual auth (JWT + chat token), phone normalization, duplicate prevention, list/search/filter/status | Lint, typecheck, 41 unit, 103 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 

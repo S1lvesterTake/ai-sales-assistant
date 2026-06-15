@@ -14,6 +14,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BusinessProfileModule } from './modules/business-profile/business-profile.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FaqsModule } from './modules/faqs/faqs.module';
+import { LeadsModule } from './modules/leads/leads.module';
 import { HealthModule } from './modules/health/health.module';
 import { OwnershipModule } from './common/ownership/ownership.module';
 import { ProductsModule } from './modules/products/products.module';
@@ -42,6 +43,7 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     BusinessProfileModule,
     ChatModule,
     FaqsModule,
+    LeadsModule,
     ProductsModule,
     WhatsappModule,
     HealthModule,
