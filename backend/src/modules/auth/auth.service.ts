@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { AuthenticatedUser } from '../../common/auth/authenticated-user';
+import { isUniqueViolation } from '../../database/postgres-error';
 import { AuthRepository, PublicUser } from './auth.repository';
 import { AuthSessionDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,15 +16,6 @@ import { RegisterDto } from './dto/register.dto';
 const BCRYPT_COST = 12;
 const DUMMY_PASSWORD_HASH =
   '$2b$12$FPqQ5yYuch7hI/jaxCbJ.eeiuOG9.7XeEmpBn.UaxsY9/6/mGX8TO';
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
-}
 
 @Injectable()
 export class AuthService {

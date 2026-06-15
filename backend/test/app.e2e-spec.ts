@@ -56,6 +56,8 @@ describe('Health API (e2e)', () => {
           },
         });
         expect(serialized).toContain('"/api/health"');
+        expect(serialized).toContain('"/api/business-profile"');
+        expect(serialized).toContain('"/api/public/businesses/{businessSlug}"');
       });
   });
 

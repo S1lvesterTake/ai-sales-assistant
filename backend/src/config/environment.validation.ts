@@ -13,6 +13,18 @@ function readPositiveInteger(
   return value;
 }
 
+function readBoolean(
+  environment: Record<string, unknown>,
+  key: string,
+  fallback: boolean,
+): boolean {
+  const rawValue = environment[key] ?? fallback;
+  if (typeof rawValue === 'boolean') return rawValue;
+  if (rawValue === 'true') return true;
+  if (rawValue === 'false') return false;
+  throw new Error(`${key} must be true or false`);
+}
+
 function readFrontendUrl(environment: Record<string, unknown>): string {
   const rawValue = environment.FRONTEND_URL ?? 'http://localhost:3000';
   if (typeof rawValue !== 'string') {
@@ -89,6 +101,11 @@ export function validateEnvironment(
     ),
     JWT_SECRET: readJwtSecret(environment),
     JWT_EXPIRES_IN: readPositiveInteger(environment, 'JWT_EXPIRES_IN', 3_600),
+    DEMO_DATA_RESET_ON_DEPLOY: readBoolean(
+      environment,
+      'DEMO_DATA_RESET_ON_DEPLOY',
+      false,
+    ),
     RATE_LIMIT_LIMIT: readPositiveInteger(environment, 'RATE_LIMIT_LIMIT', 100),
     RATE_LIMIT_TTL_MS: readPositiveInteger(
       environment,

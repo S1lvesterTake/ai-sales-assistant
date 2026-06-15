@@ -8,8 +8,10 @@ import { StructuredLogger } from './common/logging/structured-logger.service';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { validateEnvironment } from './config/environment.validation';
 import { DatabaseModule } from './database/database.module';
+import { DemoDataModule } from './database/seeds/demo-data.module';
 import { ErrorLogService } from './modules/error-log/error-log.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { BusinessProfileModule } from './modules/business-profile/business-profile.module';
 import { HealthModule } from './modules/health/health.module';
 import { OwnershipModule } from './common/ownership/ownership.module';
 
@@ -30,8 +32,10 @@ import { OwnershipModule } from './common/ownership/ownership.module';
       ],
     }),
     DatabaseModule,
+    DemoDataModule,
     OwnershipModule,
     AuthModule,
+    BusinessProfileModule,
     HealthModule,
   ],
   providers: [

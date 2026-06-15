@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-04 - Business Profile and Demo Operations
+- Current part: BE-05 - Product and FAQ Knowledge Management
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -119,8 +119,8 @@ Excluded until a separate integration task:
 | BE-01 | HTTP, Configuration, Logging, and Swagger Foundation | COMPLETE | BE-00 | Global behavior and API contract tests |
 | BE-02 | PostgreSQL Schema, Migrations, and Database Layer | COMPLETE | BE-00 | Empty-database migration and constraint tests |
 | BE-03 | Authentication and Ownership Foundation | COMPLETE | BE-01, BE-02 | Auth API and cross-owner foundation tests |
-| BE-04 | Business Profile and Demo Operations | IN_PROGRESS | BE-03 | Private/public profile, seed, and reset tests |
-| BE-05 | Product and FAQ Knowledge Management | NOT_STARTED | BE-04 | Ownership-scoped CRUD and pagination tests |
+| BE-04 | Business Profile and Demo Operations | COMPLETE | BE-03 | Private/public profile, seed, and reset tests |
+| BE-05 | Product and FAQ Knowledge Management | IN_PROGRESS | BE-04 | Ownership-scoped CRUD and pagination tests |
 | BE-06 | Public Chat Session Security | NOT_STARTED | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
 | BE-07 | AI Provider and Idempotent Chat Processing | NOT_STARTED | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
 | BE-08 | Lead Capture and Management | NOT_STARTED | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
@@ -554,15 +554,15 @@ Goal: Implement one-business-per-user profile management, public slug resolution
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Indonesian phone normalization utility and class-validator decorator; PostgresErrorDetails helper extracting code/constraint from nested pg errors; DemoData constants and idempotent transactional seed/reset service with guarded CLI; BusinessProfile module (controller, service, repository, public controller, 5 DTOs); environment validation for DEMO_USER_PASSWORD and DEMO_DATA_RESET_ON_DEPLOY; auth service refactored to use shared isUniqueViolation; app module registered BusinessProfile and DemoData modules; integration tests for profile CRUD, slug/public resolution, demo protection, concurrent registration; E2E Swagger contract test updated for business-profile endpoints; README demo data documentation
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed (including phone normalization, postgres error, auth, env validation); 22 PostgreSQL integration tests passed (auth 13, business-profile 9 covering create/get/update, slug conflict, one-profile-per-user, concurrent registration, invalid/Demo protected updates, public slug resolution 200/404/422, cross-owner isolation); 7 E2E tests passed including Swagger contract updates; production build passed
+- Decisions: Extract isUniqueViolation and postgresErrorDetails to a shared database utility; store demo constants with fixed UUIDs for idempotent upsert behavior; use transactional SELECT…FOR UPDATE to guard demo seed/reset against concurrent modification; enforce demo field immutability at the service layer with DEMO_PROTECTED_FIELDS; reject empty update payloads early; derive suggestedQuestions from active FAQs and available products; return suggestedQuestions only in the public response
+- Risks or follow-up: suggestedQuestions derivation queries the repository directly — as product/FAQ modules are added in BE-05, the repository query should be refined to include product-based suggestions; demo seed CLI requires a build step (npm run build && node dist/…) which is acceptable for a trusted operator command
 
 ## BE-05 - Product and FAQ Knowledge Management
 
-Status: NOT_STARTED
+Status: IN_PROGRESS
 
 Goal: Implement ownership-scoped knowledge CRUD with deterministic bounded queries for later chatbot context use.
 
@@ -1005,7 +1005,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-02 | IN_PROGRESS | COMPLETE | Completed Drizzle schema, generated migrations, pooled database service, and PostgreSQL constraint verification | Lint, typecheck, 19 unit, 7 E2E, 5 PostgreSQL integration, build, image, and audit passed |
 | 2026-06-15 | BE-03 | NOT_STARTED | IN_PROGRESS | Activated JWT authentication, password hashing, and ownership resolution | BE-01 HTTP contract and BE-02 database foundation complete |
 | 2026-06-15 | BE-03 | IN_PROGRESS | COMPLETE | Completed JWT auth, generic credential handling, protected current-user access, and JWT-derived ownership resolution | Lint, typecheck, 25 unit, 7 E2E, 13 PostgreSQL integration, build, and audit passed |
-| 2026-06-15 | BE-04 | NOT_STARTED | IN_PROGRESS | Activated business profile, public slug, phone normalization, demo seed, and guarded reset work | BE-03 authentication and ownership foundation complete |
+| 2026-06-15 | BE-04 | IN_PROGRESS | COMPLETE | Completed business profile management, phone normalization, public slug resolution, demo seed/reset, and guarded demo identity protection | Lint, typecheck, 41 unit, 22 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 

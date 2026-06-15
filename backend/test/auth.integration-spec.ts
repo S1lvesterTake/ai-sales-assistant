@@ -132,6 +132,24 @@ describe('Authentication and ownership API', () => {
     expect(injected.rowCount).toBe(0);
   });
 
+  it('maps concurrent duplicate registration to one conflict', async () => {
+    const responses = await Promise.all([
+      request(app.getHttpServer()).post('/api/auth/register').send({
+        name: 'Concurrent One',
+        email: 'concurrent-auth@example.com',
+        password: 'Password123',
+      }),
+      request(app.getHttpServer()).post('/api/auth/register').send({
+        name: 'Concurrent Two',
+        email: 'concurrent-auth@example.com',
+        password: 'Password123',
+      }),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+  });
+
   it.each([
     {
       label: 'invalid email',

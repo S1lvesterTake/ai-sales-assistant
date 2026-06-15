@@ -34,6 +34,25 @@ npm run db:studio
 Integration tests start a disposable PostgreSQL 16 container and verify the
 empty-database migration, constraints, indexes, and delete behavior.
 
+## Demo Data
+
+The trusted demo command creates the `Kopi Senja UMKM` account and restores its
+documented products and FAQs. Configure `DEMO_USER_PASSWORD` with the public
+portfolio credential `DemoKopiSenja2026!` before running it.
+
+- Email: `demo@kopisenja.id`
+- Password: `DemoKopiSenja2026!`
+- Public slug: `kopi-senja-umkm`
+
+```bash
+npm run db:seed:demo
+DEMO_DATA_RESET_ON_DEPLOY=true npm run db:reset:demo
+```
+
+Reset is an explicit transactional CLI operation. It refuses to run unless the
+guard is exactly `true`, removes only records owned by the marked demo account,
+and is never invoked automatically during application startup.
+
 ## Verification
 
 ```bash

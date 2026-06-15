@@ -9,6 +9,7 @@ describe('validateEnvironment', () => {
     expect(validateEnvironment(validEnvironment)).toMatchObject({
       FRONTEND_URL: 'http://localhost:3000',
       DATABASE_POOL_MAX: 10,
+      DEMO_DATA_RESET_ON_DEPLOY: false,
       RATE_LIMIT_LIMIT: 100,
       RATE_LIMIT_TTL_MS: 60_000,
     });
@@ -29,6 +30,7 @@ describe('validateEnvironment', () => {
     ['FRONTEND_URL', 'javascript:alert(1)'],
     ['RATE_LIMIT_LIMIT', '0'],
     ['RATE_LIMIT_TTL_MS', 'abc'],
+    ['DEMO_DATA_RESET_ON_DEPLOY', 'yes'],
   ])('rejects invalid %s', (key, value) => {
     expect(() =>
       validateEnvironment({ ...validEnvironment, [key]: value }),
