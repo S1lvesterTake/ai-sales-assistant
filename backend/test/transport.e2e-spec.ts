@@ -8,6 +8,7 @@ import { App } from 'supertest/types';
 import { ResponseMessage } from '../src/common/decorators/response-message.decorator';
 import { configureApplication } from '../src/configure-application';
 import { AppModule } from '../src/app.module';
+import { DatabaseService } from '../src/database/database.service';
 
 class EchoDto {
   @IsString()
@@ -39,7 +40,10 @@ describe('HTTP foundation (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [TransportTestController],
-    }).compile();
+    })
+      .overrideProvider(DatabaseService)
+      .useValue({ ping: () => Promise.resolve(true) })
+      .compile();
 
     app = moduleFixture.createNestApplication({ bodyParser: false });
     configureApplication(app, app.get(ConfigService));

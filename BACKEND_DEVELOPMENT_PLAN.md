@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-02 - PostgreSQL Schema, Migrations, and Database Layer
+- Current part: BE-03 - Authentication and Ownership Foundation
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -117,8 +117,8 @@ Excluded until a separate integration task:
 |---|---|---|---|---|
 | BE-00 | Backend Project Foundation | COMPLETE | None | Build, lint, typecheck, health smoke, backend image build |
 | BE-01 | HTTP, Configuration, Logging, and Swagger Foundation | COMPLETE | BE-00 | Global behavior and API contract tests |
-| BE-02 | PostgreSQL Schema, Migrations, and Database Layer | IN_PROGRESS | BE-00 | Empty-database migration and constraint tests |
-| BE-03 | Authentication and Ownership Foundation | NOT_STARTED | BE-01, BE-02 | Auth API and cross-owner foundation tests |
+| BE-02 | PostgreSQL Schema, Migrations, and Database Layer | COMPLETE | BE-00 | Empty-database migration and constraint tests |
+| BE-03 | Authentication and Ownership Foundation | IN_PROGRESS | BE-01, BE-02 | Auth API and cross-owner foundation tests |
 | BE-04 | Business Profile and Demo Operations | NOT_STARTED | BE-03 | Private/public profile, seed, and reset tests |
 | BE-05 | Product and FAQ Knowledge Management | NOT_STARTED | BE-04 | Ownership-scoped CRUD and pagination tests |
 | BE-06 | Public Chat Session Security | NOT_STARTED | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
@@ -413,7 +413,7 @@ Goal: Establish consistent transport behavior before feature modules are impleme
 
 ## BE-02 - PostgreSQL Schema, Migrations, and Database Layer
 
-Status: IN_PROGRESS
+Status: COMPLETE
 
 Goal: Implement the complete data model, constraints, indexes, migrations, and database access foundation before business modules.
 
@@ -460,15 +460,15 @@ Goal: Implement the complete data model, constraints, indexes, migrations, and d
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Drizzle config and scripts; PostgreSQL environment validation; DatabaseModule and pooled DatabaseService; nine Drizzle schema files; generated SQL migration and metadata; explicit enums, checks, unique constraints, foreign keys, delete behavior, and composite indexes; database-backed health state; best-effort error log persistence; disposable PostgreSQL integration harness; database README instructions; package manifests
+- Test evidence: ESLint and strict TypeScript passed; 19 unit tests passed; 7 HTTP E2E tests passed; 5 PostgreSQL 16 integration tests passed after applying the empty-database migration twice; tests verified nine tables, required indexes, one-profile-per-user, slug/phone/price checks, lead uniqueness, clientMessageId uniqueness, same-session reply constraints, unique assistant replies, cascade and set-null behavior, DatabaseService ping and shutdown; production build and backend Docker image passed; npm audit reported 0 vulnerabilities
+- Decisions: Use PostgreSQL enums for chat roles, processing status, and lead status; use a composite unique constraint before the same-session reply foreign key; use a disposable Docker PostgreSQL harness instead of SQLite or mocks; keep database error logs supplemental and swallow persistence failures
+- Risks or follow-up: Lead/session same-business relationships still require ownership-scoped transactional validation in services where SET NULL delete behavior prevents a composite foreign key; query-plan verification remains BE-10 and BE-11 scope
 
 ## BE-03 - Authentication and Ownership Foundation
 
-Status: NOT_STARTED
+Status: IN_PROGRESS
 
 Goal: Implement secure JWT authentication and the ownership context required by every private module.
 
@@ -1002,11 +1002,13 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-01 | NOT_STARTED | IN_PROGRESS | Activated transport, validation, logging, security headers, throttling, and Swagger foundation | BE-00 dependency complete |
 | 2026-06-15 | BE-01 | IN_PROGRESS | COMPLETE | Completed centralized HTTP contract, safe logging, Swagger, CORS, and throttling | Lint, typecheck, 14 unit tests, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-02 | NOT_STARTED | IN_PROGRESS | Activated PostgreSQL schema, migrations, constraints, indexes, and database layer | BE-00 foundation and BE-01 transport complete |
+| 2026-06-15 | BE-02 | IN_PROGRESS | COMPLETE | Completed Drizzle schema, generated migrations, pooled database service, and PostgreSQL constraint verification | Lint, typecheck, 19 unit, 7 E2E, 5 PostgreSQL integration, build, image, and audit passed |
+| 2026-06-15 | BE-03 | NOT_STARTED | IN_PROGRESS | Activated JWT authentication, password hashing, and ownership resolution | BE-01 HTTP contract and BE-02 database foundation complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 2 / 12
+- Completed parts: 3 / 12
 - Unit coverage: Pending
 - Critical service coverage: Pending
 - PostgreSQL integration result: Pending

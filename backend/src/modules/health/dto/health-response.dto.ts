@@ -2,11 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ApiSuccessResponseDto } from '../../../common/dto/api-success-response.dto';
 
 export class HealthDataDto {
-  @ApiProperty({ example: 'ok' })
-  status!: 'ok';
+  @ApiProperty({ example: 'ok', enum: ['ok', 'degraded'] })
+  status!: 'ok' | 'degraded';
 
-  @ApiProperty({ example: 'not_configured' })
-  database!: 'not_configured';
+  @ApiProperty({ example: 'up', enum: ['up', 'down'] })
+  database!: 'up' | 'down';
 
   @ApiProperty({ example: '2026-06-15T08:00:00.000Z' })
   timestamp!: string;

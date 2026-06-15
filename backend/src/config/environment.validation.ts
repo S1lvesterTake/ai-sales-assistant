@@ -38,6 +38,18 @@ function readFrontendUrl(environment: Record<string, unknown>): string {
   return origins.join(',');
 }
 
+function readDatabaseUrl(environment: Record<string, unknown>): string {
+  const rawValue = environment.DATABASE_URL;
+  if (typeof rawValue !== 'string' || !rawValue.trim()) {
+    throw new Error('DATABASE_URL is required');
+  }
+  const parsed = new URL(rawValue);
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+    throw new Error('DATABASE_URL must be a PostgreSQL connection URL');
+  }
+  return rawValue;
+}
+
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -48,6 +60,22 @@ export function validateEnvironment(
     NODE_ENV: bootstrap.nodeEnv,
     PORT: bootstrap.port,
     FRONTEND_URL: readFrontendUrl(environment),
+    DATABASE_URL: readDatabaseUrl(environment),
+    DATABASE_POOL_MAX: readPositiveInteger(
+      environment,
+      'DATABASE_POOL_MAX',
+      10,
+    ),
+    DATABASE_CONNECTION_TIMEOUT_MS: readPositiveInteger(
+      environment,
+      'DATABASE_CONNECTION_TIMEOUT_MS',
+      5_000,
+    ),
+    DATABASE_IDLE_TIMEOUT_MS: readPositiveInteger(
+      environment,
+      'DATABASE_IDLE_TIMEOUT_MS',
+      30_000,
+    ),
     RATE_LIMIT_LIMIT: readPositiveInteger(environment, 'RATE_LIMIT_LIMIT', 100),
     RATE_LIMIT_TTL_MS: readPositiveInteger(
       environment,

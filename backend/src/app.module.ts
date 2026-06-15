@@ -7,6 +7,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { StructuredLogger } from './common/logging/structured-logger.service';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { validateEnvironment } from './config/environment.validation';
+import { DatabaseModule } from './database/database.module';
 import { ErrorLogService } from './modules/error-log/error-log.service';
 import { HealthModule } from './modules/health/health.module';
 
@@ -26,6 +27,7 @@ import { HealthModule } from './modules/health/health.module';
         },
       ],
     }),
+    DatabaseModule,
     HealthModule,
   ],
   providers: [

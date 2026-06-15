@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { ConfigService } from '@nestjs/config';
 import { configureApplication } from '../src/configure-application';
+import { DatabaseService } from '../src/database/database.service';
 
 describe('Health API (e2e)', () => {
   let app: INestApplication<App>;
@@ -12,7 +13,10 @@ describe('Health API (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(DatabaseService)
+      .useValue({ ping: () => Promise.resolve(true) })
+      .compile();
 
     app = moduleFixture.createNestApplication({ bodyParser: false });
     configureApplication(app, app.get(ConfigService));
@@ -27,7 +31,7 @@ describe('Health API (e2e)', () => {
         expect(body).toMatchObject({
           success: true,
           message: 'Service is healthy',
-          data: { status: 'ok', database: 'not_configured' },
+          data: { status: 'ok', database: 'up' },
         });
       });
   });
