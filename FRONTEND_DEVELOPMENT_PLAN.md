@@ -5,9 +5,9 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Frontend MVP
 - Status: In progress
-- Current part: FE-07 - Product Management
-- Next action: Build paginated product listing, URL filters, validated create/edit forms, availability updates, and delete confirmation
-- Last updated: 2026-06-14
+- Current part: FE-10 - Business Settings and Chat Preview
+- Next action: Build protected business profile create/update settings, immutable demo identity controls, canonical WhatsApp validation, unsaved-change protection, and slug-based chatbot preview
+- Last updated: 2026-06-15
 - Canonical requirements: `PRD_AI_Sales_Assistant_for_UMKM.md`
 - Canonical architecture: `CLAUDE.md`
 - Agent guardrails: `AGENTS.md`
@@ -57,8 +57,8 @@ No part may be skipped silently. Any scope change must be recorded in the Decisi
 | FE-06 | Dashboard Overview | `COMPLETE` | FE-05 | Lint, typecheck, 72 tests, build, 11 Chromium E2E, audit, and desktop/mobile browser QA passed |
 | FE-07 | Product Management | `COMPLETE` | FE-05 | Lint, typecheck, 93 tests, build, 12 Chromium E2E, audit, and desktop/mobile browser QA passed |
 | FE-08 | FAQ Management | `COMPLETE` | FE-05 | Lint, typecheck, 111 tests, build, 13 Chromium E2E, audit, and desktop/mobile browser QA passed |
-| FE-09 | Lead Management | `IN_PROGRESS` | FE-04, FE-05 | Pending |
-| FE-10 | Business Settings and Chat Preview | `NOT_STARTED` | FE-05 | Pending |
+| FE-09 | Lead Management | `COMPLETE` | FE-04, FE-05 | Lint, typecheck, 135 tests, build, 14 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| FE-10 | Business Settings and Chat Preview | `IN_PROGRESS` | FE-05 | Pending |
 | FE-11 | Integration and End-to-End Flows | `NOT_STARTED` | FE-03 through FE-10 | Pending |
 | FE-12 | Production Hardening and Delivery | `NOT_STARTED` | FE-11 | Pending |
 
@@ -551,29 +551,29 @@ npm run build
 
 ## FE-09 - Lead Management
 
-**Status:** `IN_PROGRESS`
+**Status:** `COMPLETE`
 
 **Goal:** Let owners find, understand, update, and follow up captured leads.
 
 ### Implementation Checklist
 
-- [ ] Add paginated lead list.
-- [ ] Add search and status filters in URL search parameters.
-- [ ] Add lead detail panel or page with linked conversation context.
-- [ ] Add manual lead creation.
-- [ ] Add status update flow for new, contacted, qualified, closed, and lost.
-- [ ] Display canonical phone numbers safely and consistently.
-- [ ] Add WhatsApp follow-up action.
-- [ ] Handle duplicate-phone backend responses without creating duplicate rows.
-- [ ] Add empty, no-result, loading, validation, and error states.
-- [ ] Ensure private lead data never appears on public routes or page metadata.
+- [x] Add paginated lead list.
+- [x] Add search and status filters in URL search parameters.
+- [x] Add lead detail panel or page with linked conversation context.
+- [x] Add manual lead creation.
+- [x] Add status update flow for new, contacted, qualified, closed, and lost.
+- [x] Display canonical phone numbers safely and consistently.
+- [x] Add WhatsApp follow-up action.
+- [x] Handle duplicate-phone backend responses without creating duplicate rows.
+- [x] Add empty, no-result, loading, validation, and error states.
+- [x] Ensure private lead data never appears on public routes or page metadata.
 
 ### Acceptance Gate
 
-- [ ] Lead list, detail, search, pagination, creation, and status updates work.
-- [ ] Duplicate lead behavior is clear and non-destructive.
-- [ ] Conversation and WhatsApp actions use only authorized data.
-- [ ] Sensitive data is excluded from client logs and analytics.
+- [x] Lead list, detail, search, pagination, creation, and status updates work.
+- [x] Duplicate lead behavior is clear and non-destructive.
+- [x] Conversation and WhatsApp actions use only authorized data.
+- [x] Sensitive data is excluded from client logs and analytics.
 
 ### Verification Commands
 
@@ -587,15 +587,15 @@ npm run build
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Lead server page/loading UI; responsive list, filters, form, detail, status, phone/date/WhatsApp display utilities, validation, server loader/store, same-origin create/status routes, Jest coverage, and `frontend/e2e/leads.spec.ts`
+- Test evidence: ESLint and strict TypeScript passed; 135 Jest tests passed with 80.65% statement coverage; production build passed; lead E2E and two consecutive full 14-test Chromium runs passed; npm audit reported 0 vulnerabilities; in-app browser QA passed at desktop and 390px with no overflow, console warnings/errors, or client-serialized chat-session ID
+- Decisions: Normalize phone numbers before submission and again at the server boundary; force manual source server-side; keep filters in URL state; render authorized conversation context without exposing the raw session ID to Client Components; use native WhatsApp anchors so follow-up navigation is not blocked by analytics or JavaScript
+- Risks or follow-up: Live backend must enforce ownership, canonical-phone uniqueness, bounded deterministic pagination, and matching field-error contracts during FE-11; actual authenticated chat-message enrichment is pending a documented owner conversation endpoint
 
 ## FE-10 - Business Settings and Chat Preview
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS`
 
 **Goal:** Let owners create or update business context and safely preview the public chatbot.
 
@@ -769,7 +769,7 @@ These checks apply to every applicable part:
 | Dashboard endpoints | FE-06 | MSW aggregate fixtures | Mock complete; live backend pending |
 | Product endpoints | FE-07 | Same-origin deterministic CRUD adapter plus service contract | Mock complete; live backend pending |
 | FAQ endpoints | FE-08 | Same-origin deterministic CRUD adapter plus service contract | Mock complete; live backend pending |
-| Lead endpoints | FE-09 | MSW CRUD and duplicate handler | Pending |
+| Lead endpoints | FE-09 | Same-origin deterministic CRUD adapter plus service contract | Mock complete; live backend pending |
 | Business profile endpoints | FE-10 | MSW create/update handlers | Pending |
 | Swagger/OpenAPI contract | FE-11 | PRD types until available | Pending |
 
@@ -791,6 +791,7 @@ These checks apply to every applicable part:
 | 2026-06-14 | FE-06 | Load dashboard widgets concurrently and isolate failures | Aggregate and recent endpoints are independent and one outage must not hide successful business data | `Promise.allSettled` feeds per-widget success/error states; rendered recent lists are capped at five |
 | 2026-06-15 | FE-07 | Keep product reads server-rendered and mutations behind same-origin routes | Preserve the HttpOnly JWT boundary while supporting responsive CRUD interactions and URL-addressable filters | Server list loads stay private; create, update, status, and delete requests use validated BFF handlers with session-expiry recovery |
 | 2026-06-15 | FE-08 | Gate browser requests on MSW readiness and hydrate mutation triggers explicitly | Development requests and early clicks must not race instrumentation or client hydration | API clients wait for mock startup; form triggers remain disabled until hydrated; stateful E2E runs use bounded parallelism |
+| 2026-06-15 | FE-09 | Keep lead reads server-rendered and minimize data crossing Client Component boundaries | Lead contact data is private and raw linked-session identifiers are unnecessary for UI interactions | Mutations use same-origin handlers; client props contain only required fields plus a linked-conversation boolean; phone duplicate checks use canonical values |
 
 ## Progress Log
 
@@ -818,19 +819,21 @@ Add one entry whenever a part changes status.
 | 2026-06-15 | FE-08 | `NOT_STARTED` | `IN_PROGRESS` | Activated FAQ knowledge management after product management completion | FE-05 authentication and FE-07 dashboard CRUD patterns complete |
 | 2026-06-15 | FE-08 | `IN_PROGRESS` | `COMPLETE` | Completed responsive FAQ CRUD, search, filters, pagination, status, validation, confirmation, and recovery states | Lint, typecheck, 111 Jest tests, build, two consecutive 13-test Chromium runs, audit, and desktop/mobile browser QA passed |
 | 2026-06-15 | FE-09 | `NOT_STARTED` | `IN_PROGRESS` | Activated lead management after FAQ knowledge management completion | FE-04 lead capture and FE-05 authenticated dashboard dependencies complete |
+| 2026-06-15 | FE-09 | `IN_PROGRESS` | `COMPLETE` | Completed responsive lead list, URL filters, manual creation, canonical duplicate handling, linked context, five-state updates, and WhatsApp follow-up | Lint, typecheck, 135 Jest tests, build, two consecutive 14-test Chromium runs, audit, and desktop/mobile browser QA passed |
+| 2026-06-15 | FE-10 | `NOT_STARTED` | `IN_PROGRESS` | Activated business settings and slug-based chatbot preview after lead management completion | FE-05 authenticated dashboard and FE-09 owner workflow patterns complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 9 / 13
-- Unit coverage: Latest gate passed with 111 Jest tests and 78.91% statement coverage
-- Critical-flow coverage: Public, auth, dashboard, product, and FAQ CRUD/search/filter/pagination flows plus empty, validation, failure, retry, confirmation, hydration, and mobile states covered
-- E2E result: Latest gate passed twice consecutively with 13 Chromium tests
+- Completed parts: 10 / 13
+- Unit coverage: Latest gate passed with 135 Jest tests and 80.65% statement coverage
+- Critical-flow coverage: Public, auth, dashboard, product, FAQ, and lead CRUD/search/filter/pagination/status/follow-up flows plus empty, validation, duplicate, failure, retry, confirmation, hydration, and mobile states covered
+- E2E result: Latest gate passed twice consecutively with 14 Chromium tests
 - Production build: Latest gate passed
 - Docker build: Pending
 - Docker Compose: Pending
-- Accessibility review: FE-00 through FE-08 reviewed; final audit pending FE-12
-- Responsive review: FE-00 through FE-08 passed desktop/mobile browser QA; full route matrix pending FE-12
-- Security review: Public token boundaries, HttpOnly JWT storage, same-origin product/FAQ mutations, safe redirects, session-expiry recovery, and authoritative dashboard session validation reviewed
-- Performance review: Bounded history/polling, concurrent aggregate dashboard loading, bounded product/FAQ pagination, bounded E2E concurrency, and responsive conditional presentation reviewed; final bundle review pending FE-12
+- Accessibility review: FE-00 through FE-09 reviewed; final audit pending FE-12
+- Responsive review: FE-00 through FE-09 passed desktop/mobile browser QA; full route matrix pending FE-12
+- Security review: Public token boundaries, HttpOnly JWT storage, same-origin product/FAQ/lead mutations, minimized private client props, safe redirects, session-expiry recovery, and authoritative dashboard session validation reviewed
+- Performance review: Bounded history/polling, concurrent aggregate dashboard loading, bounded product/FAQ/lead pagination, bounded E2E concurrency, and responsive conditional presentation reviewed; final bundle review pending FE-12
 - Remaining risks: Live backend contract and full Docker Compose integration remain pending FE-11/FE-12
