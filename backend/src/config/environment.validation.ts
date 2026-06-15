@@ -50,6 +50,17 @@ function readDatabaseUrl(environment: Record<string, unknown>): string {
   return rawValue;
 }
 
+function readJwtSecret(environment: Record<string, unknown>): string {
+  const value = environment.JWT_SECRET;
+  if (typeof value !== 'string' || value.length < 32) {
+    throw new Error('JWT_SECRET must contain at least 32 characters');
+  }
+  if (value.includes('replace-with') || value.includes('change-me')) {
+    throw new Error('JWT_SECRET must not use a placeholder value');
+  }
+  return value;
+}
+
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -76,6 +87,8 @@ export function validateEnvironment(
       'DATABASE_IDLE_TIMEOUT_MS',
       30_000,
     ),
+    JWT_SECRET: readJwtSecret(environment),
+    JWT_EXPIRES_IN: readPositiveInteger(environment, 'JWT_EXPIRES_IN', 3_600),
     RATE_LIMIT_LIMIT: readPositiveInteger(environment, 'RATE_LIMIT_LIMIT', 100),
     RATE_LIMIT_TTL_MS: readPositiveInteger(
       environment,

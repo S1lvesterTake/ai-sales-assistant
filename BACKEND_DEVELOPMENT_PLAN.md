@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-03 - Authentication and Ownership Foundation
+- Current part: BE-04 - Business Profile and Demo Operations
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -118,8 +118,8 @@ Excluded until a separate integration task:
 | BE-00 | Backend Project Foundation | COMPLETE | None | Build, lint, typecheck, health smoke, backend image build |
 | BE-01 | HTTP, Configuration, Logging, and Swagger Foundation | COMPLETE | BE-00 | Global behavior and API contract tests |
 | BE-02 | PostgreSQL Schema, Migrations, and Database Layer | COMPLETE | BE-00 | Empty-database migration and constraint tests |
-| BE-03 | Authentication and Ownership Foundation | IN_PROGRESS | BE-01, BE-02 | Auth API and cross-owner foundation tests |
-| BE-04 | Business Profile and Demo Operations | NOT_STARTED | BE-03 | Private/public profile, seed, and reset tests |
+| BE-03 | Authentication and Ownership Foundation | COMPLETE | BE-01, BE-02 | Auth API and cross-owner foundation tests |
+| BE-04 | Business Profile and Demo Operations | IN_PROGRESS | BE-03 | Private/public profile, seed, and reset tests |
 | BE-05 | Product and FAQ Knowledge Management | NOT_STARTED | BE-04 | Ownership-scoped CRUD and pagination tests |
 | BE-06 | Public Chat Session Security | NOT_STARTED | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
 | BE-07 | AI Provider and Idempotent Chat Processing | NOT_STARTED | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
@@ -468,7 +468,7 @@ Goal: Implement the complete data model, constraints, indexes, migrations, and d
 
 ## BE-03 - Authentication and Ownership Foundation
 
-Status: IN_PROGRESS
+Status: COMPLETE
 
 Goal: Implement secure JWT authentication and the ownership context required by every private module.
 
@@ -505,15 +505,15 @@ Goal: Implement secure JWT authentication and the ownership context required by 
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: JWT and bcrypt dependencies; JWT environment validation and examples; AuthModule, controller, service, repository, strategy, guard, decorator, DTOs, and authenticated principal type; reusable business ownership resolver; application module registration; auth unit and PostgreSQL integration tests; shared disposable PostgreSQL test helper
+- Test evidence: ESLint and strict TypeScript passed; 25 unit tests passed; 7 HTTP E2E tests passed; 13 PostgreSQL integration tests passed; integration coverage verified registration, bcrypt hashes, normalized email, duplicate email, validation boundaries, protected-field rejection, generic invalid credentials, valid/missing/malformed/expired JWTs, current-user responses, and user-derived business ownership; production build passed; npm audit reported 0 vulnerabilities
+- Decisions: Use bcrypt cost 12; issue expiring bearer JWTs with user UUID in sub; re-read the user in the JWT strategy; perform a dummy bcrypt comparison for unknown accounts; force isDemo false in repository writes; resolve business ownership only through business_profiles.user_id
+- Risks or follow-up: JWT revocation is outside MVP scope; private business endpoints must consistently use BusinessOwnershipService and resource-plus-owner predicates; demo identity protection and one-profile concurrency handling continue in BE-04
 
 ## BE-04 - Business Profile and Demo Operations
 
-Status: NOT_STARTED
+Status: IN_PROGRESS
 
 Goal: Implement one-business-per-user profile management, public slug resolution, phone normalization, and deterministic demo recovery.
 
@@ -1004,11 +1004,13 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-02 | NOT_STARTED | IN_PROGRESS | Activated PostgreSQL schema, migrations, constraints, indexes, and database layer | BE-00 foundation and BE-01 transport complete |
 | 2026-06-15 | BE-02 | IN_PROGRESS | COMPLETE | Completed Drizzle schema, generated migrations, pooled database service, and PostgreSQL constraint verification | Lint, typecheck, 19 unit, 7 E2E, 5 PostgreSQL integration, build, image, and audit passed |
 | 2026-06-15 | BE-03 | NOT_STARTED | IN_PROGRESS | Activated JWT authentication, password hashing, and ownership resolution | BE-01 HTTP contract and BE-02 database foundation complete |
+| 2026-06-15 | BE-03 | IN_PROGRESS | COMPLETE | Completed JWT auth, generic credential handling, protected current-user access, and JWT-derived ownership resolution | Lint, typecheck, 25 unit, 7 E2E, 13 PostgreSQL integration, build, and audit passed |
+| 2026-06-15 | BE-04 | NOT_STARTED | IN_PROGRESS | Activated business profile, public slug, phone normalization, demo seed, and guarded reset work | BE-03 authentication and ownership foundation complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 3 / 12
+- Completed parts: 4 / 12
 - Unit coverage: Pending
 - Critical service coverage: Pending
 - PostgreSQL integration result: Pending

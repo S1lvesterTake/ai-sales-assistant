@@ -2,9 +2,11 @@ import { validateEnvironment } from './environment.validation';
 
 describe('validateEnvironment', () => {
   const databaseUrl = 'postgresql://postgres:postgres@localhost:5432/test';
+  const jwtSecret = 'unit-test-jwt-secret-with-at-least-32-characters';
+  const validEnvironment = { DATABASE_URL: databaseUrl, JWT_SECRET: jwtSecret };
 
   it('applies transport defaults', () => {
-    expect(validateEnvironment({ DATABASE_URL: databaseUrl })).toMatchObject({
+    expect(validateEnvironment(validEnvironment)).toMatchObject({
       FRONTEND_URL: 'http://localhost:3000',
       DATABASE_POOL_MAX: 10,
       RATE_LIMIT_LIMIT: 100,
@@ -15,7 +17,7 @@ describe('validateEnvironment', () => {
   it('accepts multiple explicit frontend origins', () => {
     expect(
       validateEnvironment({
-        DATABASE_URL: databaseUrl,
+        ...validEnvironment,
         FRONTEND_URL: 'https://example.com,http://localhost:3000',
       }),
     ).toMatchObject({
@@ -29,14 +31,26 @@ describe('validateEnvironment', () => {
     ['RATE_LIMIT_TTL_MS', 'abc'],
   ])('rejects invalid %s', (key, value) => {
     expect(() =>
-      validateEnvironment({ DATABASE_URL: databaseUrl, [key]: value }),
+      validateEnvironment({ ...validEnvironment, [key]: value }),
     ).toThrow();
   });
 
   it.each([undefined, '', 'mysql://localhost/test'])(
     'rejects invalid database URL %s',
     (value) => {
-      expect(() => validateEnvironment({ DATABASE_URL: value })).toThrow();
+      expect(() =>
+        validateEnvironment({ ...validEnvironment, DATABASE_URL: value }),
+      ).toThrow();
     },
   );
+
+  it.each([
+    undefined,
+    'short',
+    'replace-with-secret-value-that-is-long-enough',
+  ])('rejects invalid JWT secret %s', (value) => {
+    expect(() =>
+      validateEnvironment({ ...validEnvironment, JWT_SECRET: value }),
+    ).toThrow();
+  });
 });

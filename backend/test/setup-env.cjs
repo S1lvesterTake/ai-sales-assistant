@@ -1,3 +1,5 @@
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL ??=
   'postgresql://postgres:postgres@127.0.0.1:5432/ai_sales_assistant_test';
+process.env.JWT_SECRET ??= 'test-jwt-secret-with-at-least-32-characters';
+process.env.JWT_EXPIRES_IN ??= '3600';

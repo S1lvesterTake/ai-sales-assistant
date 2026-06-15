@@ -1,57 +1,14 @@
-import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { promisify } from 'node:util';
+import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../src/database/database.service';
-
-const execFileAsync = promisify(execFile);
-
-async function startPostgresContainer(): Promise<{
-  connectionUri: string;
-  name: string;
-}> {
-  const name = `ai-sales-backend-test-${randomUUID()}`;
-  await execFileAsync('docker', [
-    'run',
-    '--rm',
-    '-d',
-    '--name',
-    name,
-    '-e',
-    'POSTGRES_DB=ai_sales_assistant_test',
-    '-e',
-    'POSTGRES_USER=test',
-    '-e',
-    'POSTGRES_PASSWORD=test',
-    '-P',
-    'postgres:16-alpine',
-  ]);
-  const { stdout } = await execFileAsync('docker', ['port', name, '5432/tcp']);
-  const port = stdout.match(/:(\d+)\s*$/m)?.[1];
-  if (!port) throw new Error('Unable to resolve disposable PostgreSQL port');
-  return {
-    connectionUri: `postgresql://test:test@127.0.0.1:${port}/ai_sales_assistant_test`,
-    name,
-  };
-}
-
-async function waitForPostgres(connectionUri: string): Promise<Pool> {
-  const pool = new Pool({ connectionString: connectionUri });
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    try {
-      await pool.query('select 1');
-      return pool;
-    } catch {
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
-    }
-  }
-  await pool.end();
-  throw new Error('Disposable PostgreSQL did not become ready');
-}
+import {
+  DisposablePostgres,
+  startDisposablePostgres,
+} from './helpers/postgres-container';
 
 async function expectPgCode(
   operation: Promise<unknown>,
@@ -66,15 +23,14 @@ async function expectPgCode(
 }
 
 describe('PostgreSQL schema and migrations', () => {
-  let containerName: string;
+  let container: DisposablePostgres;
   let connectionUri: string;
   let pool: Pool;
 
   beforeAll(async () => {
-    const container = await startPostgresContainer();
-    containerName = container.name;
+    container = await startDisposablePostgres();
     connectionUri = container.connectionUri;
-    pool = await waitForPostgres(connectionUri);
+    pool = container.pool;
     const database = drizzle(pool);
     const migrationsFolder = resolve(__dirname, '../src/database/migrations');
     await migrate(database, { migrationsFolder });
@@ -82,10 +38,7 @@ describe('PostgreSQL schema and migrations', () => {
   });
 
   afterAll(async () => {
-    if (pool) await pool.end();
-    if (containerName) {
-      await execFileAsync('docker', ['rm', '-f', containerName]);
-    }
+    if (container) await container.stop();
   });
 
   it('creates every table and required index from an empty database', async () => {
