@@ -56,8 +56,8 @@ No part may be skipped silently. Any scope change must be recorded in the Decisi
 | FE-05 | Authentication and Route Protection | `COMPLETE` | FE-01, FE-02 | Lint, typecheck, 67 tests, build, 9 Chromium E2E, audit, and desktop/mobile browser QA passed |
 | FE-06 | Dashboard Overview | `COMPLETE` | FE-05 | Lint, typecheck, 72 tests, build, 11 Chromium E2E, audit, and desktop/mobile browser QA passed |
 | FE-07 | Product Management | `COMPLETE` | FE-05 | Lint, typecheck, 93 tests, build, 12 Chromium E2E, audit, and desktop/mobile browser QA passed |
-| FE-08 | FAQ Management | `IN_PROGRESS` | FE-05 | Pending |
-| FE-09 | Lead Management | `NOT_STARTED` | FE-04, FE-05 | Pending |
+| FE-08 | FAQ Management | `COMPLETE` | FE-05 | Lint, typecheck, 111 tests, build, 13 Chromium E2E, audit, and desktop/mobile browser QA passed |
+| FE-09 | Lead Management | `IN_PROGRESS` | FE-04, FE-05 | Pending |
 | FE-10 | Business Settings and Chat Preview | `NOT_STARTED` | FE-05 | Pending |
 | FE-11 | Integration and End-to-End Flows | `NOT_STARTED` | FE-03 through FE-10 | Pending |
 | FE-12 | Production Hardening and Delivery | `NOT_STARTED` | FE-11 | Pending |
@@ -509,27 +509,27 @@ npm run build
 
 ## FE-08 - FAQ Management
 
-**Status:** `IN_PROGRESS`
+**Status:** `COMPLETE`
 
 **Goal:** Allow owners to maintain active FAQ knowledge for chatbot context.
 
 ### Implementation Checklist
 
-- [ ] Add paginated FAQ list.
-- [ ] Add search, category, and active-status filters in URL parameters.
-- [ ] Add create and edit forms.
-- [ ] Add enable/disable control.
-- [ ] Add delete confirmation.
-- [ ] Validate required fields and maximum lengths.
-- [ ] Handle empty, no-result, loading, validation, and server-error states.
-- [ ] Add responsive table and mobile card presentation.
+- [x] Add paginated FAQ list.
+- [x] Add search, category, and active-status filters in URL parameters.
+- [x] Add create and edit forms.
+- [x] Add enable/disable control.
+- [x] Add delete confirmation.
+- [x] Validate required fields and maximum lengths.
+- [x] Handle empty, no-result, loading, validation, and server-error states.
+- [x] Add responsive table and mobile card presentation.
 
 ### Acceptance Gate
 
-- [ ] Create, read, update, delete, search, filter, and status flows work.
-- [ ] Active status is clear without relying on color alone.
-- [ ] Backend validation is mapped to form fields.
-- [ ] Mutation controls prevent duplicate requests.
+- [x] Create, read, update, delete, search, filter, and status flows work.
+- [x] Active status is clear without relying on color alone.
+- [x] Backend validation is mapped to form fields.
+- [x] Mutation controls prevent duplicate requests.
 
 ### Verification Commands
 
@@ -543,15 +543,15 @@ npm run build
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: FAQ server page/loading UI; list, form, actions, query, validation, server loader/store, same-origin mutation routes, mock-readiness and hydration utilities, stable Playwright configuration, Jest coverage, and `frontend/e2e/faqs.spec.ts`
+- Test evidence: ESLint and strict TypeScript passed; 111 Jest tests passed with 78.91% statement coverage; production build passed; FAQ E2E and two consecutive full 13-test Chromium runs passed; npm audit reported 0 vulnerabilities; in-app browser QA passed on desktop and 390px with no overflow or console warnings/errors
+- Decisions: Reuse the server-read/same-origin-mutation architecture from products; search question and answer case-insensitively; keep exact case-insensitive category filtering; disable mutation dialog triggers until hydration; make API clients wait for MSW readiness in development; cap Playwright at two workers and avoid concurrent stateful seed bursts
+- Risks or follow-up: Live backend must match FAQ search, pagination, field-error, ownership, and deterministic-ordering contracts during FE-11 integration; only active FAQ inclusion in AI context remains a backend responsibility
 
 ## FE-09 - Lead Management
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS`
 
 **Goal:** Let owners find, understand, update, and follow up captured leads.
 
@@ -768,7 +768,7 @@ These checks apply to every applicable part:
 | Auth login and current-user endpoints | FE-05 | Same-origin auth mock | Mock complete; live backend pending |
 | Dashboard endpoints | FE-06 | MSW aggregate fixtures | Mock complete; live backend pending |
 | Product endpoints | FE-07 | Same-origin deterministic CRUD adapter plus service contract | Mock complete; live backend pending |
-| FAQ endpoints | FE-08 | MSW CRUD handlers | Pending |
+| FAQ endpoints | FE-08 | Same-origin deterministic CRUD adapter plus service contract | Mock complete; live backend pending |
 | Lead endpoints | FE-09 | MSW CRUD and duplicate handler | Pending |
 | Business profile endpoints | FE-10 | MSW create/update handlers | Pending |
 | Swagger/OpenAPI contract | FE-11 | PRD types until available | Pending |
@@ -790,6 +790,7 @@ These checks apply to every applicable part:
 | 2026-06-14 | FE-05 | Use a same-origin BFF boundary with optimistic Proxy checks and authoritative server validation | JWT must remain unreadable to browser JavaScript while every protected render still verifies the backend session | Route Handlers own cookie mutation; dashboard layouts call `/auth/me`; redirects accept only dashboard-relative targets |
 | 2026-06-14 | FE-06 | Load dashboard widgets concurrently and isolate failures | Aggregate and recent endpoints are independent and one outage must not hide successful business data | `Promise.allSettled` feeds per-widget success/error states; rendered recent lists are capped at five |
 | 2026-06-15 | FE-07 | Keep product reads server-rendered and mutations behind same-origin routes | Preserve the HttpOnly JWT boundary while supporting responsive CRUD interactions and URL-addressable filters | Server list loads stay private; create, update, status, and delete requests use validated BFF handlers with session-expiry recovery |
+| 2026-06-15 | FE-08 | Gate browser requests on MSW readiness and hydrate mutation triggers explicitly | Development requests and early clicks must not race instrumentation or client hydration | API clients wait for mock startup; form triggers remain disabled until hydrated; stateful E2E runs use bounded parallelism |
 
 ## Progress Log
 
@@ -815,19 +816,21 @@ Add one entry whenever a part changes status.
 | 2026-06-14 | FE-07 | `NOT_STARTED` | `IN_PROGRESS` | Started complete product knowledge management flow | FE-05 authentication and dashboard shell complete |
 | 2026-06-15 | FE-07 | `IN_PROGRESS` | `COMPLETE` | Completed responsive product CRUD, URL filters, pagination, availability, validation, confirmation, and recovery states | Lint, typecheck, 93 Jest tests, build, 12 Chromium E2E, audit, and desktop/mobile browser QA passed |
 | 2026-06-15 | FE-08 | `NOT_STARTED` | `IN_PROGRESS` | Activated FAQ knowledge management after product management completion | FE-05 authentication and FE-07 dashboard CRUD patterns complete |
+| 2026-06-15 | FE-08 | `IN_PROGRESS` | `COMPLETE` | Completed responsive FAQ CRUD, search, filters, pagination, status, validation, confirmation, and recovery states | Lint, typecheck, 111 Jest tests, build, two consecutive 13-test Chromium runs, audit, and desktop/mobile browser QA passed |
+| 2026-06-15 | FE-09 | `NOT_STARTED` | `IN_PROGRESS` | Activated lead management after FAQ knowledge management completion | FE-04 lead capture and FE-05 authenticated dashboard dependencies complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 8 / 13
-- Unit coverage: Latest gate passed with 93 Jest tests and 77.08% statement coverage
-- Critical-flow coverage: Public, auth, dashboard, and product CRUD/filter/pagination flows plus empty, validation, duplicate, failure, retry, confirmation, and mobile states covered
-- E2E result: Latest gate passed with 12 Chromium tests
+- Completed parts: 9 / 13
+- Unit coverage: Latest gate passed with 111 Jest tests and 78.91% statement coverage
+- Critical-flow coverage: Public, auth, dashboard, product, and FAQ CRUD/search/filter/pagination flows plus empty, validation, failure, retry, confirmation, hydration, and mobile states covered
+- E2E result: Latest gate passed twice consecutively with 13 Chromium tests
 - Production build: Latest gate passed
 - Docker build: Pending
 - Docker Compose: Pending
-- Accessibility review: FE-00 through FE-07 reviewed; final audit pending FE-12
-- Responsive review: FE-00 through FE-07 passed desktop/mobile browser QA; full route matrix pending FE-12
-- Security review: Public token boundaries, HttpOnly JWT storage, same-origin product mutations, safe redirects, session-expiry recovery, and authoritative dashboard session validation reviewed
-- Performance review: Bounded history/polling, concurrent aggregate dashboard loading, bounded product pagination, and responsive conditional presentation reviewed; final bundle review pending FE-12
+- Accessibility review: FE-00 through FE-08 reviewed; final audit pending FE-12
+- Responsive review: FE-00 through FE-08 passed desktop/mobile browser QA; full route matrix pending FE-12
+- Security review: Public token boundaries, HttpOnly JWT storage, same-origin product/FAQ mutations, safe redirects, session-expiry recovery, and authoritative dashboard session validation reviewed
+- Performance review: Bounded history/polling, concurrent aggregate dashboard loading, bounded product/FAQ pagination, bounded E2E concurrency, and responsive conditional presentation reviewed; final bundle review pending FE-12
 - Remaining risks: Live backend contract and full Docker Compose integration remain pending FE-11/FE-12

@@ -1,4 +1,5 @@
 import { ApiClientError, createHttpError } from "@/lib/api-errors";
+import { waitForApiMockingReady } from "@/lib/api-mocking-ready";
 import { getPublicEnv } from "@/lib/env";
 import type {
   ApiErrorResponse,
@@ -159,6 +160,7 @@ export class ApiClient {
     if (sessionToken) requestHeaders.set("X-Chat-Session-Token", sessionToken);
 
     try {
+      await waitForApiMockingReady();
       const response = await (this.fetcher ?? fetch)(
         new URL(path.replace(/^\//, ""), this.baseUrl),
         {

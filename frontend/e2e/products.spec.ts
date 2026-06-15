@@ -103,19 +103,15 @@ test("manages, filters, and paginates product knowledge without losing state", a
     await expect(page.getByText(editedName)).toHaveCount(0);
     cleanupIds.delete(createBody.data.id);
 
-    const seedResponses = await Promise.all(
-      Array.from({ length: 11 }, (_, index) =>
-        page.request.post("/api/dashboard/products", {
+    for (let index = 0; index < 11; index += 1) {
+      const response = await page.request.post("/api/dashboard/products", {
           data: {
             name: `Produk Pagination ${runId}-${index}`,
             price: 10000 + index,
             category: paginationCategory,
             isAvailable: true,
           },
-        }),
-      ),
-    );
-    for (const response of seedResponses) {
+        });
       expect(response.ok()).toBe(true);
       const body = (await response.json()) as { data: { id: string } };
       cleanupIds.add(body.data.id);

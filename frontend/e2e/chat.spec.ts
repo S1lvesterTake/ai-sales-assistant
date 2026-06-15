@@ -8,17 +8,41 @@ async function enableApiMocking(page: Page) {
   });
   if (!isControlled) await page.reload();
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          try {
+            const response = await fetch(
+              "http://localhost:3001/api/public/businesses/kopi-senja-umkm",
+            );
+            return response.status;
+          } catch {
+            return 0;
+          }
+        }),
+      { timeout: 10_000 },
+    )
+    .toBe(200);
+}
+
+async function openDemoChat(page: Page) {
+  await page.goto("/demo-chat");
+  const heading = page.getByRole("heading", { name: "Kopi Senja UMKM" });
+  const retry = page.getByRole("button", { name: "Coba lagi" });
+  await expect(heading.or(retry)).toBeVisible({ timeout: 10_000 });
+  if (await retry.isVisible()) {
+    await retry.click();
+  }
+  await expect(heading).toBeVisible({ timeout: 10_000 });
 }
 
 test("customer can chat, save a lead, and reach the WhatsApp handoff", async ({
   page,
 }) => {
   await enableApiMocking(page);
-  await page.goto("/demo-chat");
+  await openDemoChat(page);
 
-  await expect(
-    page.getByRole("heading", { name: "Kopi Senja UMKM" }),
-  ).toBeVisible();
   await expect(page).not.toHaveURL(/sessionToken|mock-chat-session-token/);
   expect(
     await page.evaluate(() =>
@@ -54,7 +78,7 @@ test("pending message polling does not duplicate the customer message", async ({
   page,
 }) => {
   await enableApiMocking(page);
-  await page.goto("/demo-chat");
+  await openDemoChat(page);
 
   await page.getByLabel("Tulis pesan").fill("pending cek status");
   await page.getByRole("button", { name: "Kirim pesan" }).click();

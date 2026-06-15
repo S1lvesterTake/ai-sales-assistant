@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { sessionExpiredHref } from "@/lib/auth/session-expiry";
+import { useHydrated } from "@/lib/use-hydrated";
 import type { ApiErrorResponse } from "@/types/api";
 import type { Product, ProductInput } from "@/types/product";
 
@@ -81,6 +82,7 @@ function isErrorResponse(value: unknown): value is ApiErrorResponse {
 
 export function ProductFormDialog({ product }: { product?: Product }) {
   const isEditing = Boolean(product);
+  const isHydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const {
@@ -154,7 +156,11 @@ export function ProductFormDialog({ product }: { product?: Product }) {
     >
       <DialogTrigger
         render={
-          <Button size={isEditing ? "sm" : "default"} variant={isEditing ? "outline" : "default"} />
+          <Button
+            disabled={!isHydrated}
+            size={isEditing ? "sm" : "default"}
+            variant={isEditing ? "outline" : "default"}
+          />
         }
       >
         {isEditing ? <Pencil aria-hidden="true" /> : <PackagePlus aria-hidden="true" />}
