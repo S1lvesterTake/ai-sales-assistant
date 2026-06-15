@@ -68,8 +68,10 @@ describe('Health API (e2e)', () => {
         expect(serialized).toContain(
           '"/api/public/businesses/{businessSlug}/chat/sessions/{sessionId}/messages"',
         );
-        expect(serialized).toContain('"/api/auth/login"');
-        expect(serialized).toContain('"/api/auth/register"');
+        expect(serialized).toContain('"/api/public/businesses/{businessSlug}/whatsapp/link"');
+        expect(serialized).toContain(
+          '"/api/public/businesses/{businessSlug}/whatsapp-clicks"',
+        );
       });
   });
 

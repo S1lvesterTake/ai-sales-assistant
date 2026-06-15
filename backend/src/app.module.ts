@@ -17,6 +17,7 @@ import { FaqsModule } from './modules/faqs/faqs.module';
 import { HealthModule } from './modules/health/health.module';
 import { OwnershipModule } from './common/ownership/ownership.module';
 import { ProductsModule } from './modules/products/products.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ProductsModule } from './modules/products/products.module';
     ChatModule,
     FaqsModule,
     ProductsModule,
+    WhatsappModule,
     HealthModule,
   ],
   providers: [

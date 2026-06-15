@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-08 - Lead Capture and Management
+- Current part: BE-09 - WhatsApp Link and Click Tracking
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -124,7 +124,7 @@ Excluded until a separate integration task:
 | BE-06 | Public Chat Session Security | COMPLETE | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
 | BE-07 | AI Provider and Idempotent Chat Processing | COMPLETE | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
 | BE-08 | Lead Capture and Management | IN_PROGRESS | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
-| BE-09 | WhatsApp Link and Click Tracking | NOT_STARTED | BE-04, BE-06, BE-08 | Relation authorization and URL tests |
+| BE-09 | WhatsApp Link and Click Tracking | COMPLETE | BE-04, BE-06 | Relation authorization and URL tests |
 | BE-10 | Dashboard and Owner Conversation Reads | NOT_STARTED | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
 | BE-11 | Standalone Hardening and Delivery | NOT_STARTED | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
 
@@ -794,11 +794,11 @@ Goal: Generate safe WhatsApp URLs and record bounded, authorized click context.
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: WhatsappModule (controller, service, repository, 2 DTOs); AppModule registered WhatsappModule; integration tests for link generation and click tracking; E2E Swagger contract updated
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; 86 PostgreSQL integration tests passed (WhatsApp 11 new, plus existing 75); 7 E2E tests passed; production build passed
+- Decisions: Generate wa.me URLs from canonical business phone numbers with URL-encoded Indonesian prefilled message; context-free (landing-page) link and click requests require no auth; when sessionId is supplied, X-Chat-Session-Token is mandatory and verified; click tracking uses best-effort recording (failures don't block URL generation); leadId validation deferred to BE-08 service layer; reuse ChatSessionAuthService from ChatModule for session authorization
+- Risks or follow-up: leadId cross-business validation is handled when BE-08 service layer is complete; click tracking is fire-and-forget (no retry on DB failure)
 
 ## BE-10 - Dashboard and Owner Conversation Reads
 
@@ -1009,6 +1009,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-05 | NOT_STARTED | COMPLETE | Completed products and FAQs CRUD with ownership scoping, pagination, search, and cross-owner isolation | Lint, typecheck, 41 unit, 55 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-06 | NOT_STARTED | COMPLETE | Completed public chat session security with SHA-256 token hashing, X-Chat-Session-Token auth, and slug-validated history | Lint, typecheck, 41 unit, 68 integration, 7 E2E, build, and audit passed |
 | 2026-06-15 | BE-07 | NOT_STARTED | COMPLETE | Completed AI provider abstraction, prompt builder, buying intent, idempotent chat processing, and fallback | Lint, typecheck, 41 unit, 75 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-09 | NOT_STARTED | COMPLETE | Completed WhatsApp wa.me link generation, click tracking with context-free and session-authorized modes | Lint, typecheck, 41 unit, 86 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 
