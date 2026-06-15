@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,28 +26,64 @@ export function ConfirmationDialog({
   cancelLabel?: string;
   confirmLabel?: string;
   description: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   trigger: ReactElement;
   variant?: "default" | "destructive";
 }) {
+  const [open, setOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [error, setError] = useState("");
+
+  async function confirm() {
+    if (isConfirming) return;
+    setIsConfirming(true);
+    setError("");
+    try {
+      await onConfirm();
+      setOpen(false);
+    } catch {
+      setError("Tindakan belum berhasil. Silakan coba lagi.");
+    } finally {
+      setIsConfirming(false);
+    }
+  }
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isConfirming) {
+          setOpen(nextOpen);
+          if (!nextOpen) setError("");
+        }
+      }}
+    >
       <DialogTrigger render={trigger} />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>
+          <DialogClose
+            disabled={isConfirming}
+            render={<Button disabled={isConfirming} variant="outline" />}
+          >
             {cancelLabel}
           </DialogClose>
-          <DialogClose
-            render={<Button variant={variant} onClick={onConfirm} />}
+          <Button
+            disabled={isConfirming}
+            onClick={() => void confirm()}
+            variant={variant}
           >
-            {confirmLabel}
-          </DialogClose>
+            {isConfirming ? "Memproses..." : confirmLabel}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
