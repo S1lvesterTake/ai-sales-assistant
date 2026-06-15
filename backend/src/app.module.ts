@@ -12,8 +12,10 @@ import { DemoDataModule } from './database/seeds/demo-data.module';
 import { ErrorLogService } from './modules/error-log/error-log.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { BusinessProfileModule } from './modules/business-profile/business-profile.module';
+import { FaqsModule } from './modules/faqs/faqs.module';
 import { HealthModule } from './modules/health/health.module';
 import { OwnershipModule } from './common/ownership/ownership.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { OwnershipModule } from './common/ownership/ownership.module';
     OwnershipModule,
     AuthModule,
     BusinessProfileModule,
+    FaqsModule,
+    ProductsModule,
     HealthModule,
   ],
   providers: [

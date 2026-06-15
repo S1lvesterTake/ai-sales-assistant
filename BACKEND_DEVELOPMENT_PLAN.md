@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-05 - Product and FAQ Knowledge Management
+- Current part: BE-06 - Public Chat Session Security
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -120,8 +120,8 @@ Excluded until a separate integration task:
 | BE-02 | PostgreSQL Schema, Migrations, and Database Layer | COMPLETE | BE-00 | Empty-database migration and constraint tests |
 | BE-03 | Authentication and Ownership Foundation | COMPLETE | BE-01, BE-02 | Auth API and cross-owner foundation tests |
 | BE-04 | Business Profile and Demo Operations | COMPLETE | BE-03 | Private/public profile, seed, and reset tests |
-| BE-05 | Product and FAQ Knowledge Management | IN_PROGRESS | BE-04 | Ownership-scoped CRUD and pagination tests |
-| BE-06 | Public Chat Session Security | NOT_STARTED | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
+| BE-05 | Product and FAQ Knowledge Management | COMPLETE | BE-04 | Ownership-scoped CRUD and pagination tests |
+| BE-06 | Public Chat Session Security | IN_PROGRESS | BE-02, BE-04 | Token, expiry, history, and rate-limit tests |
 | BE-07 | AI Provider and Idempotent Chat Processing | NOT_STARTED | BE-05, BE-06 | Concurrency, stale claim, fallback, and fake-provider tests |
 | BE-08 | Lead Capture and Management | NOT_STARTED | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | NOT_STARTED | BE-04, BE-06, BE-08 | Relation authorization and URL tests |
@@ -599,11 +599,11 @@ Goal: Implement ownership-scoped knowledge CRUD with deterministic bounded queri
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Products module (controller, service, repository, 4 DTOs); FAQs module (controller, service, repository, 4 DTOs); AppModule registered both modules; integration tests for products and FAQs covering CRUD, cross-owner isolation, pagination, filters, search, delete; E2E Swagger contract updated
+- Test evidence: ESLint and strict TypeScript passed; 41 unit tests passed; 55 PostgreSQL integration tests passed (products 16, FAQs 16, plus existing auth/business-profile 23); 7 E2E tests passed including new product and FAQ Swagger paths; production build passed
+- Decisions: Use pre-built envelope with `success: true` for paginated list responses so the global response interceptor passes them through unchanged; return `null` data after successful DELETE; enforce bounded pagination (page>=1, limit 1-100); use `ilike` for FAQ search to support case-insensitive matching; resolve business ownership via `BusinessOwnershipService` in every service method; return 404 from the service layer using `BUSINESS_PROFILE_NOT_FOUND` when no profile exists for a user
+- Risks or follow-up: The repository query for FAQ `ilike` search may benefit from a GIN trigram index at scale — acceptable for MVP; product and FAQ repos are exported from their modules for later use by chat context selection and dashboard aggregation in BE-07 and BE-10
 
 ## BE-06 - Public Chat Session Security
 
@@ -1006,6 +1006,7 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-03 | NOT_STARTED | IN_PROGRESS | Activated JWT authentication, password hashing, and ownership resolution | BE-01 HTTP contract and BE-02 database foundation complete |
 | 2026-06-15 | BE-03 | IN_PROGRESS | COMPLETE | Completed JWT auth, generic credential handling, protected current-user access, and JWT-derived ownership resolution | Lint, typecheck, 25 unit, 7 E2E, 13 PostgreSQL integration, build, and audit passed |
 | 2026-06-15 | BE-04 | IN_PROGRESS | COMPLETE | Completed business profile management, phone normalization, public slug resolution, demo seed/reset, and guarded demo identity protection | Lint, typecheck, 41 unit, 22 integration, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-05 | NOT_STARTED | COMPLETE | Completed products and FAQs CRUD with ownership scoping, pagination, search, and cross-owner isolation | Lint, typecheck, 41 unit, 55 integration, 7 E2E, build, and audit passed |
 
 ## Final Verification Record
 
