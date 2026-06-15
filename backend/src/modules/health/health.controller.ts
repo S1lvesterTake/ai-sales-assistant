@@ -1,27 +1,19 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ResponseMessage } from '../../common/decorators/response-message.decorator';
+import { HealthDataDto, HealthResponseDto } from './dto/health-response.dto';
 
-export interface HealthResponse {
-  success: true;
-  message: string;
-  data: {
-    status: 'ok';
-    database: 'not_configured';
-    timestamp: string;
-  };
-}
-
+@ApiTags('Health Check')
 @Controller('health')
 export class HealthController {
   @Get()
-  getHealth(): HealthResponse {
+  @ResponseMessage('Service is healthy')
+  @ApiOkResponse({ type: HealthResponseDto })
+  getHealth(): HealthDataDto {
     return {
-      success: true,
-      message: 'Service is healthy',
-      data: {
-        status: 'ok',
-        database: 'not_configured',
-        timestamp: new Date().toISOString(),
-      },
+      status: 'ok',
+      database: 'not_configured',
+      timestamp: new Date().toISOString(),
     };
   }
 }

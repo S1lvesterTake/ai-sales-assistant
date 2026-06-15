@@ -5,10 +5,9 @@ describe('HealthController', () => {
     const response = new HealthController().getHealth();
 
     expect(response).toMatchObject({
-      success: true,
-      message: 'Service is healthy',
-      data: { status: 'ok', database: 'not_configured' },
+      status: 'ok',
+      database: 'not_configured',
     });
-    expect(Number.isNaN(Date.parse(response.data.timestamp))).toBe(false);
+    expect(Number.isNaN(Date.parse(response.timestamp))).toBe(false);
   });
 });

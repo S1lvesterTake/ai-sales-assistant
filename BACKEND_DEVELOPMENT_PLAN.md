@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-01 - HTTP, Configuration, Logging, and Swagger Foundation
+- Current part: BE-02 - PostgreSQL Schema, Migrations, and Database Layer
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -116,8 +116,8 @@ Excluded until a separate integration task:
 | Part | Name | Status | Depends On | Primary Evidence |
 |---|---|---|---|---|
 | BE-00 | Backend Project Foundation | COMPLETE | None | Build, lint, typecheck, health smoke, backend image build |
-| BE-01 | HTTP, Configuration, Logging, and Swagger Foundation | IN_PROGRESS | BE-00 | Global behavior and API contract tests |
-| BE-02 | PostgreSQL Schema, Migrations, and Database Layer | NOT_STARTED | BE-00 | Empty-database migration and constraint tests |
+| BE-01 | HTTP, Configuration, Logging, and Swagger Foundation | COMPLETE | BE-00 | Global behavior and API contract tests |
+| BE-02 | PostgreSQL Schema, Migrations, and Database Layer | IN_PROGRESS | BE-00 | Empty-database migration and constraint tests |
 | BE-03 | Authentication and Ownership Foundation | NOT_STARTED | BE-01, BE-02 | Auth API and cross-owner foundation tests |
 | BE-04 | Business Profile and Demo Operations | NOT_STARTED | BE-03 | Private/public profile, seed, and reset tests |
 | BE-05 | Product and FAQ Knowledge Management | NOT_STARTED | BE-04 | Ownership-scoped CRUD and pagination tests |
@@ -366,7 +366,7 @@ Goal: Create a reproducible NestJS backend that builds, tests, starts, and expos
 
 ## BE-01 - HTTP, Configuration, Logging, and Swagger Foundation
 
-Status: IN_PROGRESS
+Status: COMPLETE
 
 Goal: Establish consistent transport behavior before feature modules are implemented.
 
@@ -405,15 +405,15 @@ Goal: Establish consistent transport behavior before feature modules are impleme
 
 ### Completion Record
 
-- Completed date: Pending
-- Changed files: Pending
-- Test evidence: Pending
-- Decisions: Pending
-- Risks or follow-up: Pending
+- Completed date: 2026-06-15
+- Changed files: Global app configurator, environment validation, CORS, early correlation and security middleware, JSON parser limits, request logging, structured logger, standard response interceptor, centralized exception filter, validation flattening, pagination and response DTOs, Swagger/OpenAPI setup, throttling guard, error-log abstraction, health Swagger DTO, transport E2E coverage, environment template, and package manifests
+- Test evidence: ESLint and strict TypeScript passed; 14 unit tests passed; 7 Supertest E2E tests passed across health, Swagger, success envelopes, field validation, unknown-property rejection, malformed JSON sanitization, CORS, security headers, correlation IDs, and HTTP 429 behavior; production build passed; npm audit reported 0 vulnerabilities
+- Decisions: Use HTTP 422 for DTO validation, HTTP 400 for malformed JSON, default global limit 100 requests per 60 seconds, configurable comma-separated frontend origins, 1 MB request-body limit, and stack traces only for 5xx logs
+- Risks or follow-up: ErrorLogService remains best-effort no-op until database persistence is added; module-specific Swagger examples and auth requirements are added with each feature module
 
 ## BE-02 - PostgreSQL Schema, Migrations, and Database Layer
 
-Status: NOT_STARTED
+Status: IN_PROGRESS
 
 Goal: Implement the complete data model, constraints, indexes, migrations, and database access foundation before business modules.
 
@@ -1000,11 +1000,13 @@ Goal: Prove that the complete backend is secure, performant, documented, deploya
 | 2026-06-15 | BE-00 | NOT_STARTED | IN_PROGRESS | Started standalone NestJS foundation, health endpoint, tests, and backend image | Branch development created from current origin/main |
 | 2026-06-15 | BE-00 | IN_PROGRESS | COMPLETE | Completed reproducible NestJS foundation and non-root backend container | Lint, typecheck, 8 unit tests, 1 E2E, build, image build, and runtime health smoke passed |
 | 2026-06-15 | BE-01 | NOT_STARTED | IN_PROGRESS | Activated transport, validation, logging, security headers, throttling, and Swagger foundation | BE-00 dependency complete |
+| 2026-06-15 | BE-01 | IN_PROGRESS | COMPLETE | Completed centralized HTTP contract, safe logging, Swagger, CORS, and throttling | Lint, typecheck, 14 unit tests, 7 E2E, build, and audit passed |
+| 2026-06-15 | BE-02 | NOT_STARTED | IN_PROGRESS | Activated PostgreSQL schema, migrations, constraints, indexes, and database layer | BE-00 foundation and BE-01 transport complete |
 
 ## Final Verification Record
 
 - Final completion date: Pending
-- Completed parts: 1 / 12
+- Completed parts: 2 / 12
 - Unit coverage: Pending
 - Critical service coverage: Pending
 - PostgreSQL integration result: Pending
