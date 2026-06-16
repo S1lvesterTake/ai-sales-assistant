@@ -20,8 +20,8 @@ services:
       context: ./backend
       target: dependencies
     command: >
-      sh -c "npm run db:migrate &&
-      npm run db:seed:demo &&
+      sh -c "npm run build &&
+      npm run db:migrate &&
       npm run start:dev"
     environment:
       NODE_ENV: development
