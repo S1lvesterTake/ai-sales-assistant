@@ -127,7 +127,12 @@ ai-sales-assistant/
 │   ├── e2e/                        # 14+ Playwright specs
 │   └── Dockerfile
 ├── docker-compose.yml              # PostgreSQL + backend + frontend
-├── PRD_AI_Sales_Assistant_for_UMKM.md
+├── docs/
+│   ├── PRD_AI_Sales_Assistant_for_UMKM.md
+│   ├── CLAUDE.md
+│   ├── AGENTS.md
+│   ├── BACKEND_DEVELOPMENT_PLAN.md
+│   └── FRONTEND_DEVELOPMENT_PLAN.md
 └── README.md
 ```
 
