@@ -37,6 +37,7 @@ describe('WhatsApp link and click tracking', () => {
   let businessSlug: string;
   let sessionId: string;
   let sessionToken: string;
+  let leadId: string;
 
   beforeAll(async () => {
     postgres = await startDisposablePostgres();
@@ -91,6 +92,17 @@ describe('WhatsApp link and click tracking', () => {
       .expect(201);
     sessionId = stringFromBody(bodyOf(sessionRes), 'sessionId');
     sessionToken = stringFromBody(bodyOf(sessionRes), 'sessionToken');
+
+    const leadRes = await request(app.getHttpServer())
+      .post(`/api/leads/from-chat/${businessSlug}`)
+      .set('X-Chat-Session-Token', sessionToken)
+      .send({
+        name: 'WA Lead',
+        phone: '085511122233',
+        chatSessionId: sessionId,
+      })
+      .expect(201);
+    leadId = stringFromBody(bodyOf(leadRes), 'id');
   });
 
   afterAll(async () => {
@@ -140,6 +152,27 @@ describe('WhatsApp link and click tracking', () => {
         .expect(401);
     });
 
+    it('requires token proof when lead context is provided', async () => {
+      await request(app.getHttpServer())
+        .get(
+          `/api/public/businesses/${businessSlug}/whatsapp/link?leadId=${leadId}`,
+        )
+        .expect(401);
+    });
+
+    it('generates a lead-context link when the matching session token is provided', async () => {
+      const response = await request(app.getHttpServer())
+        .get(
+          `/api/public/businesses/${businessSlug}/whatsapp/link?leadId=${leadId}`,
+        )
+        .set('X-Chat-Session-Token', sessionToken)
+        .expect(200);
+
+      expect(stringFromBody(bodyOf(response), 'url')).toContain(
+        'https://wa.me/6281234567890',
+      );
+    });
+
     it('rejects invalid business slug', async () => {
       await request(app.getHttpServer())
         .get('/api/public/businesses/INVALID_SLUG/whatsapp/link')
@@ -175,6 +208,23 @@ describe('WhatsApp link and click tracking', () => {
 
       const body = bodyOf(response);
       expect(body.data.id).toBeTruthy();
+    });
+
+    it('rejects lead context without token', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/public/businesses/${businessSlug}/whatsapp-clicks`)
+        .send({ leadId })
+        .expect(401);
+    });
+
+    it('records a click event with lead context and matching token', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/api/public/businesses/${businessSlug}/whatsapp-clicks`)
+        .set('X-Chat-Session-Token', sessionToken)
+        .send({ leadId })
+        .expect(201);
+
+      expect(bodyOf(response).data.id).toBeTruthy();
     });
 
     it('rejects session context without token', async () => {

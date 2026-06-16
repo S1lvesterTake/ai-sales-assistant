@@ -14,6 +14,10 @@ import {
   DisposablePostgres,
   startDisposablePostgres,
 } from './helpers/postgres-container';
+import {
+  AI_PROVIDER,
+  AiProvider,
+} from '../src/modules/ai/ai-provider.interface';
 
 interface ResponseBody {
   success: boolean;
@@ -39,6 +43,22 @@ describe('AI chat processing and idempotency', () => {
   let businessSlug: string;
   let sessionId: string;
   let sessionToken: string;
+  let aiCallCount = 0;
+  let aiDelayMs = 0;
+  let aiResponseMessage =
+    'Harga Kopi Susu Gula Aren adalah Rp18.000. Silakan hubungi WhatsApp untuk order.';
+  const aiProvider: AiProvider = {
+    providerName: 'test-fake',
+    async generateResponse() {
+      aiCallCount += 1;
+      if (aiDelayMs > 0) {
+        await new Promise((resolveDelay) =>
+          setTimeout(resolveDelay, aiDelayMs),
+        );
+      }
+      return { message: aiResponseMessage };
+    },
+  };
 
   beforeAll(async () => {
     postgres = await startDisposablePostgres();
@@ -60,6 +80,8 @@ describe('AI chat processing and idempotency', () => {
     })
       .overrideProvider(DatabaseService)
       .useValue(database)
+      .overrideProvider(AI_PROVIDER)
+      .useValue(aiProvider)
       .compile();
     app = moduleFixture.createNestApplication({ bodyParser: false });
     configureApplication(app, app.get(ConfigService));
@@ -120,6 +142,13 @@ describe('AI chat processing and idempotency', () => {
     if (postgres) await postgres.stop();
   });
 
+  beforeEach(() => {
+    aiCallCount = 0;
+    aiDelayMs = 0;
+    aiResponseMessage =
+      'Harga Kopi Susu Gula Aren adalah Rp18.000. Silakan hubungi WhatsApp untuk order.';
+  });
+
   function sendMessage(clientMessageId: string, message: string) {
     return request(app.getHttpServer())
       .post(
@@ -149,15 +178,54 @@ describe('AI chat processing and idempotency', () => {
     it('returns stored response for duplicate completed clientMessageId', async () => {
       const msgId = randomUUID();
 
-      const first = await sendMessage(msgId, 'Halo').expect(200);
+      const first = await sendMessage(
+        msgId,
+        'Berapa harga kopi susu? Saya tertarik beli',
+      ).expect(200);
       const firstMsg = stringFromBody(bodyOf(first), 'message');
 
-      const second = await sendMessage(msgId, 'Halo').expect(200);
+      const second = await sendMessage(
+        msgId,
+        'Berapa harga kopi susu? Saya tertarik beli',
+      ).expect(200);
       const secondMsg = stringFromBody(bodyOf(second), 'message');
 
       // Same message returned, no new AI call
       expect(secondMsg).toBe(firstMsg);
       expect(bodyOf(second).data.processingStatus).toBe('completed');
+      expect(bodyOf(second).data.shouldShowWhatsappCta).toBe(
+        bodyOf(first).data.shouldShowWhatsappCta,
+      );
+      expect(bodyOf(second).data.whatsappUrl).toBe(
+        bodyOf(first).data.whatsappUrl,
+      );
+      expect(bodyOf(first).data.whatsappUrl).toBe(
+        'https://wa.me/6281234567890',
+      );
+      expect(aiCallCount).toBe(1);
+    });
+
+    it('returns a success 202 response for concurrent pending duplicate requests', async () => {
+      aiDelayMs = 150;
+      const msgId = randomUUID();
+
+      const responses = await Promise.all([
+        sendMessage(msgId, 'Berapa harga kopi susu? Saya tertarik beli'),
+        sendMessage(msgId, 'Berapa harga kopi susu? Saya tertarik beli'),
+      ]);
+
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        200, 202,
+      ]);
+      const pending = responses.find((response) => response.status === 202);
+      expect(pending).toBeDefined();
+      const pendingBody = bodyOf(pending!);
+      expect(pendingBody.success).toBe(true);
+      expect(pendingBody.data).toMatchObject({
+        clientMessageId: msgId,
+        processingStatus: 'pending',
+      });
+      expect(aiCallCount).toBe(1);
     });
 
     it('rejects without token', async () => {

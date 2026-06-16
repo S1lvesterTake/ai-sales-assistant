@@ -153,6 +153,51 @@ describe('Lead capture and management', () => {
         .send({ phone: '12345' })
         .expect(422);
     });
+
+    it('rejects a chatSessionId owned by another business', async () => {
+      const otherRegisterRes = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({
+          name: 'Other Lead Biz',
+          email: `other-lead-${randomUUID()}@test.com`,
+          password: 'Password123',
+        })
+        .expect(201);
+      const otherToken = stringFromBody(
+        bodyOf(otherRegisterRes),
+        'accessToken',
+      );
+      const otherSlug = `other-lead-${randomUUID().slice(0, 8)}`;
+
+      await request(app.getHttpServer())
+        .post('/api/business-profile')
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({
+          slug: otherSlug,
+          businessName: 'Other Lead Business',
+          whatsappNumber: '6289876543210',
+        })
+        .expect(201);
+
+      const otherSessionRes = await request(app.getHttpServer())
+        .post(`/api/public/businesses/${otherSlug}/chat/sessions`)
+        .send({})
+        .expect(201);
+      const otherSessionId = stringFromBody(
+        bodyOf(otherSessionRes),
+        'sessionId',
+      );
+
+      await request(app.getHttpServer())
+        .post('/api/leads')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          name: 'Cross Owner Lead',
+          phone: '086666666666',
+          chatSessionId: otherSessionId,
+        })
+        .expect(404);
+    });
   });
 
   describe('POST /api/leads/from-chat/:businessSlug (chat token)', () => {

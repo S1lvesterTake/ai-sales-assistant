@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
@@ -19,6 +20,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { ResponseMessage } from '../../common/decorators/response-message.decorator';
 import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
 import { ChatService } from './chat.service';
@@ -65,8 +67,16 @@ export class ChatController {
     @Param('sessionId') sessionId: string,
     @Headers('x-chat-session-token') token: string,
     @Body() input: SendMessageInput,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.service.sendMessage(businessSlug, sessionId, token, input);
+    return this.service
+      .sendMessage(businessSlug, sessionId, token, input)
+      .then((result) => {
+        if (result.data.processingStatus === 'pending') {
+          response.status(202);
+        }
+        return result;
+      });
   }
 
   @Get('sessions/:sessionId/messages')

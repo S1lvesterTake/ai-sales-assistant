@@ -14,6 +14,7 @@ import {
 } from '../../common/utils/indonesian-phone';
 import { BusinessOwnershipService } from '../../common/ownership/business-ownership.service';
 import { ChatSessionAuthService } from '../chat/chat-session-auth.service';
+import { ChatSessionsRepository } from '../chat/chat-sessions.repository';
 import { isUniqueViolation } from '../../database/postgres-error';
 import { LeadRecord, LeadsRepository } from './leads.repository';
 import type { CreateLeadDto } from './dto/create-lead.dto';
@@ -26,6 +27,7 @@ export class LeadsService {
     private readonly repository: LeadsRepository,
     private readonly ownership: BusinessOwnershipService,
     private readonly chatAuth: ChatSessionAuthService,
+    private readonly chatSessions: ChatSessionsRepository,
     private readonly database: DatabaseService,
   ) {}
 
@@ -34,11 +36,17 @@ export class LeadsService {
     if (!owner) throw this.profileNotFound();
 
     const phone = this.normalizePhone(input.phone);
+    const chatSessionId = input.chatSessionId
+      ? await this.resolveOwnedChatSession(
+          input.chatSessionId,
+          owner.businessProfileId,
+        )
+      : null;
 
     try {
       const lead = await this.repository.create({
         businessProfileId: owner.businessProfileId,
-        chatSessionId: input.chatSessionId ?? null,
+        chatSessionId,
         name: input.name ?? null,
         phone,
         interestSummary: input.interestSummary ?? null,
@@ -193,6 +201,23 @@ export class LeadsService {
       });
     }
     return profile;
+  }
+
+  private async resolveOwnedChatSession(
+    chatSessionId: string,
+    businessProfileId: string,
+  ): Promise<string> {
+    const session = await this.chatSessions.findByIdAndBusiness(
+      chatSessionId,
+      businessProfileId,
+    );
+    if (!session) {
+      throw new NotFoundException({
+        message: 'Sesi chat tidak ditemukan',
+        code: 'CHAT_SESSION_NOT_FOUND',
+      });
+    }
+    return session.id;
   }
 
   private notFound(): NotFoundException {

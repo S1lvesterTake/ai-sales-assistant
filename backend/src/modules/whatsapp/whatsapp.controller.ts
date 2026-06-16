@@ -23,6 +23,7 @@ import { WhatsappService } from './whatsapp.service';
 import { TrackWhatsappClickInput } from './dto/whatsapp-click.dto';
 import { WhatsappClickEnvelopeDto } from './dto/whatsapp-click.dto';
 import { WhatsappLinkEnvelopeDto } from './dto/whatsapp-link.dto';
+import { WhatsappLinkQueryDto } from './dto/whatsapp-link-query.dto';
 
 @ApiTags('Public WhatsApp')
 @Controller('public/businesses/:businessSlug')
@@ -42,11 +43,15 @@ export class WhatsappController {
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   getLink(
     @Param('businessSlug') businessSlug: string,
-    @Query('sessionId') sessionId?: string,
-    @Query('leadId') leadId?: string,
+    @Query() query: WhatsappLinkQueryDto,
     @Headers('x-chat-session-token') token?: string,
   ) {
-    return this.service.generateLink(businessSlug, sessionId, leadId, token);
+    return this.service.generateLink(
+      businessSlug,
+      query.sessionId,
+      query.leadId,
+      token,
+    );
   }
 
   @Post('whatsapp-clicks')

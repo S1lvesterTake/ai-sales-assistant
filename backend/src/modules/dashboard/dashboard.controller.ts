@@ -13,6 +13,10 @@ import { ResponseMessage } from '../../common/decorators/response-message.decora
 import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { DashboardService } from './dashboard.service';
+import {
+  DashboardConversationMessagesQueryDto,
+  DashboardWidgetQueryDto,
+} from './dto/dashboard-query.dto';
 import { DashboardSummaryEnvelopeDto } from './dto/dashboard-response.dto';
 
 @ApiTags('Dashboard')
@@ -39,12 +43,9 @@ export class DashboardController {
   @ApiUnauthorizedResponse({ type: ApiErrorResponseDto })
   getRecentLeads(
     @CurrentUser() principal: AuthenticatedUser,
-    @Query('limit') limit?: string,
+    @Query() query: DashboardWidgetQueryDto,
   ) {
-    return this.service.getRecentLeads(
-      principal.userId,
-      limit ? Number(limit) : undefined,
-    );
+    return this.service.getRecentLeads(principal.userId, query.limit);
   }
 
   @Get('recent-conversations')
@@ -54,12 +55,9 @@ export class DashboardController {
   @ApiUnauthorizedResponse({ type: ApiErrorResponseDto })
   getRecentConversations(
     @CurrentUser() principal: AuthenticatedUser,
-    @Query('limit') limit?: string,
+    @Query() query: DashboardWidgetQueryDto,
   ) {
-    return this.service.getRecentConversations(
-      principal.userId,
-      limit ? Number(limit) : undefined,
-    );
+    return this.service.getRecentConversations(principal.userId, query.limit);
   }
 
   @Get('top-questions')
@@ -69,12 +67,9 @@ export class DashboardController {
   @ApiUnauthorizedResponse({ type: ApiErrorResponseDto })
   getTopQuestions(
     @CurrentUser() principal: AuthenticatedUser,
-    @Query('limit') limit?: string,
+    @Query() query: DashboardWidgetQueryDto,
   ) {
-    return this.service.getTopQuestions(
-      principal.userId,
-      limit ? Number(limit) : undefined,
-    );
+    return this.service.getTopQuestions(principal.userId, query.limit);
   }
 
   @Get('conversations/:sessionId/messages')
@@ -86,14 +81,13 @@ export class DashboardController {
   getConversationMessages(
     @CurrentUser() principal: AuthenticatedUser,
     @Param('sessionId') sessionId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query() query: DashboardConversationMessagesQueryDto,
   ) {
     return this.service.getConversationMessages(
       principal.userId,
       sessionId,
-      page ? Number(page) : undefined,
-      limit ? Number(limit) : undefined,
+      query.page,
+      query.limit,
     );
   }
 }

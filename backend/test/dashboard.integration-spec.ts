@@ -175,6 +175,13 @@ describe('Dashboard and owner conversation reads', () => {
       >;
       expect(items.length).toBeLessThanOrEqual(1);
     });
+
+    it('rejects invalid widget limits before querying', async () => {
+      await request(app.getHttpServer())
+        .get('/api/dashboard/recent-leads?limit=-1')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(422);
+    });
   });
 
   describe('GET /api/dashboard/recent-conversations', () => {
@@ -211,6 +218,13 @@ describe('Dashboard and owner conversation reads', () => {
       const body = bodyOf(response);
       expect(body.data).toBeInstanceOf(Array);
       expect(body.meta?.total).toBeGreaterThanOrEqual(2);
+    });
+
+    it('rejects oversized conversation message limits', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/dashboard/conversations/${sessionId}/messages?limit=101`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(422);
     });
 
     it('rejects cross-owner conversation access', async () => {

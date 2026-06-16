@@ -66,7 +66,7 @@ services/types/MSW handlers for the FE-11 integration task.
 
 ### 6. Dashboard Widget Responses
 - **Frontend**: Wraps each widget in `DashboardWidgetResult<T>` (status + data)
-- **Backend**: Returns standard envelope `{ success, data }` 
+- **Backend**: Returns standard envelope `{ success, data }`
 - **Action**: Frontend already handles `ApiSuccessResponse<T>` — minor adapter needed
 
 ## MSW Handler Migration
@@ -91,4 +91,4 @@ Before starting FE-11:
 - PostgreSQL integration test verification (Docker required)
 - Docker image build and startup verification
 - EXPLAIN plan review for critical queries
-- Root docker-compose.yml wiring (deferred to FE-11)
+- Root docker-compose.yml wiring for local full-stack startup

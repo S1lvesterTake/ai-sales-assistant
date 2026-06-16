@@ -4,14 +4,25 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
-import { businessProfiles } from '../../database/schema';
+import { businessProfiles, leads } from '../../database/schema';
 import { ChatSessionAuthService } from '../chat/chat-session-auth.service';
 import { WhatsappRepository } from './whatsapp.repository';
 
 const PREFILLED_MESSAGE =
   'Halo Kak, saya lihat katalog produk dan tertarik untuk order. Bisa dibantu?';
+
+interface PublicBusinessContext {
+  id: string;
+  slug: string;
+  whatsappNumber: string;
+}
+
+interface AuthorizedClickContext {
+  sessionId: string | null;
+  leadId: string | null;
+}
 
 @Injectable()
 export class WhatsappService {
@@ -29,16 +40,7 @@ export class WhatsappService {
   ): Promise<{ url: string }> {
     const profile = await this.resolveBusiness(businessSlug);
 
-    // If session context is provided, verify authorization
-    if (sessionId) {
-      if (!rawToken) {
-        throw new UnauthorizedException({
-          message: 'Token sesi diperlukan untuk konteks ini',
-          code: 'MISSING_CHAT_SESSION_TOKEN',
-        });
-      }
-      await this.chatAuth.authorize(sessionId, profile.id, rawToken);
-    }
+    await this.authorizeContext(profile, sessionId, leadId, rawToken);
 
     const message = encodeURIComponent(PREFILLED_MESSAGE);
     const url = `https://wa.me/${profile.whatsappNumber}?text=${message}`;
@@ -53,25 +55,17 @@ export class WhatsappService {
     rawToken?: string,
   ) {
     const profile = await this.resolveBusiness(businessSlug);
-
-    // If session context is provided, verify authorization
-    if (sessionId) {
-      if (!rawToken) {
-        throw new UnauthorizedException({
-          message: 'Token sesi diperlukan untuk konteks ini',
-          code: 'MISSING_CHAT_SESSION_TOKEN',
-        });
-      }
-      await this.chatAuth.authorize(sessionId, profile.id, rawToken);
-    }
-
-    // If leadId is provided, verify it exists (best-effort, service layer in BE-08)
-    // For now, just record the event
+    const context = await this.authorizeContext(
+      profile,
+      sessionId,
+      leadId,
+      rawToken,
+    );
 
     const event = await this.repository.createClick({
       businessProfileId: profile.id,
-      chatSessionId: sessionId ?? null,
-      leadId: leadId ?? null,
+      chatSessionId: context.sessionId,
+      leadId: context.leadId,
     });
 
     return {
@@ -80,7 +74,73 @@ export class WhatsappService {
     };
   }
 
-  private async resolveBusiness(slug: string) {
+  private async authorizeContext(
+    profile: PublicBusinessContext,
+    sessionId?: string,
+    leadId?: string,
+    rawToken?: string,
+  ): Promise<AuthorizedClickContext> {
+    let sessionIdToAuthorize = sessionId ?? null;
+    let leadIdToRecord = leadId ?? null;
+
+    if ((sessionId || leadId) && !rawToken) {
+      throw new UnauthorizedException({
+        message: 'Token sesi diperlukan untuk konteks ini',
+        code: 'MISSING_CHAT_SESSION_TOKEN',
+      });
+    }
+
+    if (leadId) {
+      const [lead] = await this.database.db
+        .select({
+          id: leads.id,
+          chatSessionId: leads.chatSessionId,
+        })
+        .from(leads)
+        .where(
+          and(eq(leads.id, leadId), eq(leads.businessProfileId, profile.id)),
+        )
+        .limit(1);
+
+      if (!lead) {
+        throw new NotFoundException({
+          message: 'Lead tidak ditemukan',
+          code: 'LEAD_NOT_FOUND',
+        });
+      }
+      if (!lead.chatSessionId) {
+        throw new UnauthorizedException({
+          message: 'Lead ini tidak memiliki konteks sesi chat',
+          code: 'LEAD_SESSION_NOT_AVAILABLE',
+        });
+      }
+      if (sessionId && lead.chatSessionId !== sessionId) {
+        throw new UnauthorizedException({
+          message: 'Lead tidak sesuai dengan sesi chat',
+          code: 'LEAD_SESSION_MISMATCH',
+        });
+      }
+      sessionIdToAuthorize = lead.chatSessionId;
+      leadIdToRecord = lead.id;
+    }
+
+    if (sessionIdToAuthorize) {
+      if (!rawToken) {
+        throw new UnauthorizedException({
+          message: 'Token sesi diperlukan untuk konteks ini',
+          code: 'MISSING_CHAT_SESSION_TOKEN',
+        });
+      }
+      await this.chatAuth.authorize(sessionIdToAuthorize, profile.id, rawToken);
+    }
+
+    return {
+      sessionId: sessionIdToAuthorize,
+      leadId: leadIdToRecord,
+    };
+  }
+
+  private async resolveBusiness(slug: string): Promise<PublicBusinessContext> {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
       throw new UnprocessableEntityException({
         message: 'Format slug bisnis tidak valid',

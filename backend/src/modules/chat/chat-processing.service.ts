@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
+import { isUniqueViolation } from '../../database/postgres-error';
 import { chatMessages } from '../../database/schema';
 import { AI_PROVIDER } from '../ai/ai-provider.interface';
 import type { AiProvider } from '../ai/ai-provider.interface';
@@ -42,17 +43,10 @@ export class ChatProcessingService {
     }
 
     if (claimResult.outcome === 'pending') {
-      throw new HttpException(
-        {
-          success: true,
-          message: 'Pesan sedang diproses',
-          data: {
-            clientMessageId: input.clientMessageId,
-            processingStatus: 'pending',
-          },
-        } satisfies Record<string, unknown>,
-        HttpStatus.ACCEPTED,
-      );
+      return {
+        clientMessageId: input.clientMessageId,
+        processingStatus: 'pending',
+      };
     }
 
     const customerMessageRow = claimResult.row;
@@ -97,6 +91,9 @@ export class ChatProcessingService {
         metadata: {
           isBuyingIntent: intent.isBuyingIntentDetected,
           shouldCaptureLead: intent.shouldCaptureLead,
+          shouldShowWhatsappCta: intent.shouldShowWhatsappCta,
+          isBuyingIntentDetected: intent.isBuyingIntentDetected,
+          whatsappUrl,
           detectedProduct: intent.detectedProduct,
         },
       });
@@ -152,19 +149,37 @@ export class ChatProcessingService {
     const now = new Date();
     const customerMessageId = randomUUID();
 
-    // Try to insert
-    const [inserted] = await this.database.db
-      .insert(chatMessages)
-      .values({
-        id: customerMessageId,
-        chatSessionId: sessionId,
-        clientMessageId,
-        role: 'customer',
-        message,
-        processingStatus: 'pending',
-        processingStartedAt: now,
-      })
-      .returning();
+    let inserted:
+      | {
+          id: string;
+          chatSessionId: string;
+          clientMessageId: string | null;
+          processingStatus: string | null;
+          processingStartedAt: Date | null;
+        }
+      | undefined;
+
+    try {
+      [inserted] = await this.database.db
+        .insert(chatMessages)
+        .values({
+          id: customerMessageId,
+          chatSessionId: sessionId,
+          clientMessageId,
+          role: 'customer',
+          message,
+          processingStatus: 'pending',
+          processingStartedAt: now,
+        })
+        .returning();
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      const raced = await this.findExisting(sessionId, clientMessageId);
+      if (raced) {
+        return this.handleExisting(sessionId, clientMessageId, message, raced);
+      }
+      throw error;
+    }
 
     if (!inserted) {
       // Race: re-read and handle
@@ -246,6 +261,10 @@ export class ChatProcessingService {
         .limit(1);
 
       const meta = (assistant?.metadata ?? {}) as Record<string, unknown>;
+      const shouldShowWhatsappCta =
+        typeof meta.shouldShowWhatsappCta === 'boolean'
+          ? meta.shouldShowWhatsappCta
+          : Boolean(meta.isBuyingIntent);
 
       return {
         outcome: 'completed',
@@ -253,11 +272,18 @@ export class ChatProcessingService {
           clientMessageId,
           processingStatus: 'completed',
           message: assistant?.message ?? FALLBACK_RESPONSE,
-          shouldShowWhatsappCta: Boolean(meta.isBuyingIntent),
-          isBuyingIntentDetected: Boolean(meta.isBuyingIntent),
+          shouldShowWhatsappCta,
+          isBuyingIntentDetected:
+            typeof meta.isBuyingIntentDetected === 'boolean'
+              ? meta.isBuyingIntentDetected
+              : Boolean(meta.isBuyingIntent),
           shouldCaptureLead: Boolean(meta.shouldCaptureLead),
-          whatsappUrl: null,
-          detectedProduct: (meta.detectedProduct as string) ?? null,
+          whatsappUrl:
+            typeof meta.whatsappUrl === 'string' ? meta.whatsappUrl : null,
+          detectedProduct:
+            typeof meta.detectedProduct === 'string'
+              ? meta.detectedProduct
+              : null,
         },
       };
     }
