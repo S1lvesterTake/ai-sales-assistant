@@ -1,0 +1,74 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, TransformFnParams } from 'class-transformer';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
+
+function trimAndNull({ value }: TransformFnParams): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function trimString({ value }: TransformFnParams): unknown {
+  return typeof value === 'string' ? value.trim() : value;
+}
+
+export class UpdateProductDto {
+  @ApiPropertyOptional({ example: 'Kopi Susu Gula Aren', maxLength: 150 })
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(150)
+  @IsOptional()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'Espresso, susu segar, dan gula aren.',
+    nullable: true,
+  })
+  @Transform(trimAndNull)
+  @IsString()
+  @IsOptional()
+  description?: string | null;
+
+  @ApiPropertyOptional({ example: 18_000, minimum: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  price?: number;
+
+  @ApiPropertyOptional({ example: 'Kopi', maxLength: 100, nullable: true })
+  @Transform(trimAndNull)
+  @IsString()
+  @MaxLength(100)
+  @IsOptional()
+  category?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'Tersedia panas atau dingin.',
+    nullable: true,
+  })
+  @Transform(trimAndNull)
+  @IsString()
+  @IsOptional()
+  orderingInstruction?: string | null;
+
+  @ApiPropertyOptional({
+    example: 'Tingkat gula dapat disesuaikan.',
+    nullable: true,
+  })
+  @Transform(trimAndNull)
+  @IsString()
+  @IsOptional()
+  additionalNotes?: string | null;
+}
