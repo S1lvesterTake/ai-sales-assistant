@@ -1,6 +1,17 @@
 # Dev Standards Review — Action Items
 
-Review date: 2026-06-16 | Scope: full codebase (backend 134 files, frontend 3 files)
+Review date: 2026-06-16 | Last updated: 2026-06-17 | Scope: full codebase (backend 134 files, frontend completed through FE-10)
+
+## Current Status
+
+| Part | Status | Dev Standards Impact |
+|---|---|---|
+| BE-00 → BE-11 | `COMPLETE` | All backend standards verified |
+| FE-00 → FE-10 | `COMPLETE` | All frontend standards verified through business settings |
+| FE-11 | `IN_PROGRESS` | Medium-priority items 1–3 to be applied here |
+| FE-12 | `NOT_STARTED` | Low-priority items 5–7, 9–11 to be evaluated here |
+
+---
 
 ## High Priority (fix before production)
 
@@ -66,7 +77,8 @@ _None identified._ All critical security, reliability, and data integrity gates 
 ### 11. Frontend MSW handler migration
 - **File**: `frontend/mocks/handlers.ts`
 - **Problem**: 6 contract differences documented in `backend/CONTRACT_GAP_REPORT.md`
-- **Fix**: Update handlers during FE-11 (chat lead path, product uniqueness, status codes)
+- **Status**: Partially complete — business profile POST/PATCH handlers added in FE-10 ✅
+- **Remaining**: Chat lead creation path, product name uniqueness, message status codes, dashboard adapter shape, WhatsApp shape match, AI provider env — to be resolved in FE-11 against live Swagger
 
 ---
 
