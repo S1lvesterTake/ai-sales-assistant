@@ -5,13 +5,15 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
-import { businessProfiles } from '../../database/schema';
 import {
   InvalidIndonesianPhoneError,
   normalizeIndonesianPhone,
 } from '../../common/utils/indonesian-phone';
+import {
+  resolveBusinessBySlug,
+  resolveBusinessWithWhatsappBySlug,
+} from '../../common/utils/slug';
 import { ChatSessionAuthService } from './chat-session-auth.service';
 import { ChatProcessingService } from './chat-processing.service';
 import {
@@ -34,7 +36,7 @@ export class ChatService {
   ) {}
 
   async createSession(businessSlug: string, input: CreateChatSessionDto) {
-    const profile = await this.resolveBusiness(businessSlug);
+    const profile = await resolveBusinessBySlug(this.database, businessSlug);
     const { raw, hash } = generateSessionToken();
     const ttl = this.config.getOrThrow<number>('CHAT_SESSION_TTL');
     const expiresAt = new Date(Date.now() + ttl * 1_000);
@@ -61,7 +63,7 @@ export class ChatService {
     rawToken: string,
     input: SendMessageInput,
   ) {
-    const profile = await this.resolveBusinessWithWhatsapp(businessSlug);
+    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
 
     if (!rawToken) {
       throw new UnauthorizedException({
@@ -91,7 +93,7 @@ export class ChatService {
     rawToken: string,
     query: ChatHistoryQueryDto,
   ) {
-    const profile = await this.resolveBusiness(businessSlug);
+    const profile = await resolveBusinessBySlug(this.database, businessSlug);
 
     if (!rawToken) {
       throw new UnauthorizedException({
@@ -119,68 +121,6 @@ export class ChatService {
         totalPages: result.totalPages,
       },
     };
-  }
-
-  private async resolveBusiness(slug: string) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      throw new UnprocessableEntityException({
-        message: 'Format slug bisnis tidak valid',
-        code: 'VALIDATION_ERROR',
-        errors: [
-          {
-            field: 'businessSlug',
-            message: 'Slug harus berupa huruf kecil, angka, dan tanda hubung',
-          },
-        ],
-      });
-    }
-
-    const [profile] = await this.database.db
-      .select({ id: businessProfiles.id, slug: businessProfiles.slug })
-      .from(businessProfiles)
-      .where(eq(businessProfiles.slug, slug))
-      .limit(1);
-
-    if (!profile) {
-      throw new NotFoundException({
-        message: 'Bisnis tidak ditemukan',
-        code: 'BUSINESS_NOT_FOUND',
-      });
-    }
-    return profile;
-  }
-
-  private async resolveBusinessWithWhatsapp(slug: string) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      throw new UnprocessableEntityException({
-        message: 'Format slug bisnis tidak valid',
-        code: 'VALIDATION_ERROR',
-        errors: [
-          {
-            field: 'businessSlug',
-            message: 'Slug harus berupa huruf kecil, angka, dan tanda hubung',
-          },
-        ],
-      });
-    }
-
-    const [profile] = await this.database.db
-      .select({
-        id: businessProfiles.id,
-        slug: businessProfiles.slug,
-        whatsappNumber: businessProfiles.whatsappNumber,
-      })
-      .from(businessProfiles)
-      .where(eq(businessProfiles.slug, slug))
-      .limit(1);
-
-    if (!profile) {
-      throw new NotFoundException({
-        message: 'Bisnis tidak ditemukan',
-        code: 'BUSINESS_NOT_FOUND',
-      });
-    }
-    return profile;
   }
 
   private normalizeOptionalPhone(

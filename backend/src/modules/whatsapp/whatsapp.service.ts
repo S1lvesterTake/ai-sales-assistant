@@ -2,22 +2,16 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
-import { businessProfiles, leads } from '../../database/schema';
+import { leads } from '../../database/schema';
+import { resolveBusinessWithWhatsappBySlug } from '../../common/utils/slug';
 import { ChatSessionAuthService } from '../chat/chat-session-auth.service';
 import { WhatsappRepository } from './whatsapp.repository';
 
 const PREFILLED_MESSAGE =
   'Halo Kak, saya lihat katalog produk dan tertarik untuk order. Bisa dibantu?';
-
-interface PublicBusinessContext {
-  id: string;
-  slug: string;
-  whatsappNumber: string;
-}
 
 interface AuthorizedClickContext {
   sessionId: string | null;
@@ -38,7 +32,7 @@ export class WhatsappService {
     leadId?: string,
     rawToken?: string,
   ): Promise<{ url: string }> {
-    const profile = await this.resolveBusiness(businessSlug);
+    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
 
     await this.authorizeContext(profile, sessionId, leadId, rawToken);
 
@@ -54,7 +48,7 @@ export class WhatsappService {
     leadId?: string,
     rawToken?: string,
   ) {
-    const profile = await this.resolveBusiness(businessSlug);
+    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
     const context = await this.authorizeContext(
       profile,
       sessionId,
@@ -75,7 +69,7 @@ export class WhatsappService {
   }
 
   private async authorizeContext(
-    profile: PublicBusinessContext,
+    profile: { id: string; slug: string; whatsappNumber: string },
     sessionId?: string,
     leadId?: string,
     rawToken?: string,
@@ -140,36 +134,4 @@ export class WhatsappService {
     };
   }
 
-  private async resolveBusiness(slug: string): Promise<PublicBusinessContext> {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      throw new UnprocessableEntityException({
-        message: 'Format slug bisnis tidak valid',
-        code: 'VALIDATION_ERROR',
-        errors: [
-          {
-            field: 'businessSlug',
-            message: 'Slug harus berupa huruf kecil, angka, dan tanda hubung',
-          },
-        ],
-      });
-    }
-
-    const [profile] = await this.database.db
-      .select({
-        id: businessProfiles.id,
-        slug: businessProfiles.slug,
-        whatsappNumber: businessProfiles.whatsappNumber,
-      })
-      .from(businessProfiles)
-      .where(eq(businessProfiles.slug, slug))
-      .limit(1);
-
-    if (!profile) {
-      throw new NotFoundException({
-        message: 'Bisnis tidak ditemukan',
-        code: 'BUSINESS_NOT_FOUND',
-      });
-    }
-    return profile;
-  }
 }

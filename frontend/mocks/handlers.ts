@@ -224,7 +224,7 @@ export const handlers = [
       });
     },
   ),
-  http.post(apiUrl("/api/leads"), async ({ request }) => {
+  http.post(apiUrl("/api/leads/from-chat/:businessSlug"), async ({ request }) => {
     if (!hasChatAuthorization(request)) return unauthorized();
     const input = (await request.json()) as Record<string, unknown>;
     const phone =

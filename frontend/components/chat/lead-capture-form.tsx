@@ -29,12 +29,14 @@ type LeadFormValues = z.infer<typeof leadSchema>;
 
 export function LeadCaptureForm({
   businessName,
+  businessSlug,
   chatSessionId,
   interestSummary,
   onCaptured,
   sessionToken,
 }: {
   businessName: string;
+  businessSlug: string;
   chatSessionId: string;
   interestSummary?: string;
   onCaptured: () => void;
@@ -56,6 +58,7 @@ export function LeadCaptureForm({
 
     try {
       await leadsService.createFromChat(
+        businessSlug,
         {
           chatSessionId,
           name: values.name.trim(),
