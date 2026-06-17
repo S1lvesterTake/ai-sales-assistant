@@ -23,31 +23,7 @@ export function validateSlug(slug: string): void {
   }
 }
 
-export async function resolveBusinessBySlug(
-  db: DatabaseService,
-  slug: string,
-): Promise<{ id: string; slug: string }> {
-  validateSlug(slug);
-
-  const [profile] = await db.db
-    .select({ id: businessProfiles.id, slug: businessProfiles.slug })
-    .from(businessProfiles)
-    .where(eq(businessProfiles.slug, slug))
-    .limit(1);
-
-  if (!profile) {
-    throw new NotFoundException({
-      message: 'Bisnis tidak ditemukan',
-      code: 'BUSINESS_NOT_FOUND',
-    });
-  }
-  return profile;
-}
-
-export async function resolveBusinessWithWhatsappBySlug(
-  db: DatabaseService,
-  slug: string,
-): Promise<{ id: string; slug: string; whatsappNumber: string }> {
+async function fetchBySlug(db: DatabaseService, slug: string) {
   validateSlug(slug);
 
   const [profile] = await db.db
@@ -67,4 +43,19 @@ export async function resolveBusinessWithWhatsappBySlug(
     });
   }
   return profile;
+}
+
+export async function resolveBusinessBySlug(
+  db: DatabaseService,
+  slug: string,
+): Promise<{ id: string; slug: string }> {
+  const { id, slug: s } = await fetchBySlug(db, slug);
+  return { id, slug: s };
+}
+
+export async function resolveBusinessWithWhatsappBySlug(
+  db: DatabaseService,
+  slug: string,
+): Promise<{ id: string; slug: string; whatsappNumber: string }> {
+  return fetchBySlug(db, slug);
 }

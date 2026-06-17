@@ -63,14 +63,14 @@ export class ChatService {
     rawToken: string,
     input: SendMessageInput,
   ) {
-    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
-
     if (!rawToken) {
       throw new UnauthorizedException({
         message: 'Token sesi diperlukan',
         code: 'MISSING_CHAT_SESSION_TOKEN',
       });
     }
+
+    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
 
     await this.auth.authorize(sessionId, profile.id, rawToken);
 
@@ -93,14 +93,14 @@ export class ChatService {
     rawToken: string,
     query: ChatHistoryQueryDto,
   ) {
-    const profile = await resolveBusinessBySlug(this.database, businessSlug);
-
     if (!rawToken) {
       throw new UnauthorizedException({
         message: 'Token sesi diperlukan',
         code: 'MISSING_CHAT_SESSION_TOKEN',
       });
     }
+
+    const profile = await resolveBusinessBySlug(this.database, businessSlug);
 
     await this.auth.authorize(sessionId, profile.id, rawToken);
 

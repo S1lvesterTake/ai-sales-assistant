@@ -6,7 +6,10 @@ import {
 import { and, eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
 import { leads } from '../../database/schema';
-import { resolveBusinessWithWhatsappBySlug } from '../../common/utils/slug';
+import {
+  resolveBusinessBySlug,
+  resolveBusinessWithWhatsappBySlug,
+} from '../../common/utils/slug';
 import { ChatSessionAuthService } from '../chat/chat-session-auth.service';
 import { WhatsappRepository } from './whatsapp.repository';
 
@@ -48,7 +51,7 @@ export class WhatsappService {
     leadId?: string,
     rawToken?: string,
   ) {
-    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
+    const profile = await resolveBusinessBySlug(this.database, businessSlug);
     const context = await this.authorizeContext(
       profile,
       sessionId,
@@ -69,7 +72,7 @@ export class WhatsappService {
   }
 
   private async authorizeContext(
-    profile: { id: string; slug: string; whatsappNumber: string },
+    profile: { id: string; slug: string },
     sessionId?: string,
     leadId?: string,
     rawToken?: string,

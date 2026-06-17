@@ -15,6 +15,21 @@ import type { ChatReplyResponse } from './dto/chat-reply-response.dto';
 export const FALLBACK_RESPONSE =
   'Maaf Kak, saya belum punya informasi yang cukup untuk menjawab itu. Kakak bisa langsung menghubungi owner melalui WhatsApp agar mendapatkan jawaban yang lebih tepat.';
 
+const MAX_FAILED_RETRIES = 3;
+
+type ProcessRow = {
+  id: string;
+  chatSessionId: string;
+  clientMessageId: string | null;
+  processingStatus: string | null;
+  processingStartedAt: Date | null;
+};
+
+type InsertOrClaimResult =
+  | { outcome: 'completed'; reply: ChatReplyResponse }
+  | { outcome: 'pending' }
+  | { outcome: 'process'; row: ProcessRow };
+
 @Injectable()
 export class ChatProcessingService {
   constructor(
@@ -126,38 +141,17 @@ export class ChatProcessingService {
     sessionId: string,
     clientMessageId: string,
     message: string,
-  ): Promise<
-    | { outcome: 'completed'; reply: ChatReplyResponse }
-    | { outcome: 'pending' }
-    | {
-        outcome: 'process';
-        row: {
-          id: string;
-          chatSessionId: string;
-          clientMessageId: string | null;
-          processingStatus: string | null;
-          processingStartedAt: Date | null;
-        };
-      }
-  > {
+  ): Promise<InsertOrClaimResult> {
     // Check for existing message first
     const existing = await this.findExisting(sessionId, clientMessageId);
     if (existing) {
-      return this.handleExisting(sessionId, clientMessageId, message, existing);
+      return this.handleExisting(sessionId, message, existing);
     }
 
     const now = new Date();
     const customerMessageId = randomUUID();
 
-    let inserted:
-      | {
-          id: string;
-          chatSessionId: string;
-          clientMessageId: string | null;
-          processingStatus: string | null;
-          processingStartedAt: Date | null;
-        }
-      | undefined;
+    let inserted: ProcessRow | undefined;
 
     try {
       [inserted] = await this.database.db
@@ -176,7 +170,7 @@ export class ChatProcessingService {
       if (!isUniqueViolation(error)) throw error;
       const raced = await this.findExisting(sessionId, clientMessageId);
       if (raced) {
-        return this.handleExisting(sessionId, clientMessageId, message, raced);
+        return this.handleExisting(sessionId, message, raced);
       }
       throw error;
     }
@@ -185,28 +179,23 @@ export class ChatProcessingService {
       // Race: re-read and handle
       const raced = await this.findExisting(sessionId, clientMessageId);
       if (raced) {
-        return this.handleExisting(sessionId, clientMessageId, message, raced);
+        return this.handleExisting(sessionId, message, raced);
       }
       throw new Error('Customer message insert returned no row');
     }
 
-    return {
-      outcome: 'process',
-      row: {
-        id: inserted.id,
-        chatSessionId: inserted.chatSessionId,
-        clientMessageId: inserted.clientMessageId,
-        processingStatus: inserted.processingStatus,
-        processingStartedAt: inserted.processingStartedAt,
-      },
-    };
+    return this.toProcessOutcome(inserted);
   }
 
   private async callAiWithRetry(input: Parameters<AiProvider['generateResponse']>[0]) {
+    const timeoutMs = this.config.get<number>('AI_TIMEOUT_MS') ?? 8_000;
+    const startTime = Date.now();
     try {
       return await this.aiProvider.generateResponse(input);
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+    } catch (err) {
+      if (Date.now() - startTime >= timeoutMs) throw err;
+      const jitter = Math.floor(Math.random() * 1_000) + 1_500;
+      await new Promise((resolve) => setTimeout(resolve, jitter));
       return this.aiProvider.generateResponse(input);
     }
   }
@@ -218,6 +207,8 @@ export class ChatProcessingService {
         processingStatus: chatMessages.processingStatus,
         processingStartedAt: chatMessages.processingStartedAt,
         message: chatMessages.message,
+        clientMessageId: chatMessages.clientMessageId,
+        retryCount: chatMessages.retryCount,
       })
       .from(chatMessages)
       .where(
@@ -232,35 +223,23 @@ export class ChatProcessingService {
 
   private async handleExisting(
     sessionId: string,
-    clientMessageId: string,
     message: string,
     existing: {
       id: string;
       processingStatus: string | null;
       processingStartedAt: Date | null;
+      clientMessageId: string | null;
+      retryCount: number;
     },
-  ): Promise<
-    | { outcome: 'completed'; reply: ChatReplyResponse }
-    | { outcome: 'pending' }
-    | {
-        outcome: 'process';
-        row: {
-          id: string;
-          chatSessionId: string;
-          clientMessageId: string | null;
-          processingStatus: string | null;
-          processingStartedAt: Date | null;
-        };
-      }
-  > {
+  ): Promise<InsertOrClaimResult> {
     if (existing.processingStatus === 'completed') {
-      return this.handleCompleted(sessionId, clientMessageId, existing);
+      return this.handleCompleted(sessionId, existing.clientMessageId ?? '', existing);
     }
     if (existing.processingStatus === 'pending') {
-      return this.handlePending(sessionId, clientMessageId, message, existing);
+      return this.handlePending(sessionId, message, existing);
     }
     if (existing.processingStatus === 'failed') {
-      return this.handleFailed(sessionId, clientMessageId, message, existing);
+      return this.handleFailed(sessionId, message, existing);
     }
     return { outcome: 'pending' };
   }
@@ -307,22 +286,9 @@ export class ChatProcessingService {
 
   private async handlePending(
     sessionId: string,
-    clientMessageId: string,
     message: string,
     existing: { id: string; processingStartedAt: Date | null },
-  ): Promise<
-    | { outcome: 'pending' }
-    | {
-        outcome: 'process';
-        row: {
-          id: string;
-          chatSessionId: string;
-          clientMessageId: string | null;
-          processingStatus: string | null;
-          processingStartedAt: Date | null;
-        };
-      }
-  > {
+  ): Promise<{ outcome: 'pending' } | { outcome: 'process'; row: ProcessRow }> {
     const staleMs = this.config.get<number>('CHAT_STALE_CLAIM_MS') ?? 30_000;
     if (
       !existing.processingStartedAt ||
@@ -344,16 +310,7 @@ export class ChatProcessingService {
       .returning();
 
     if (reclaimed) {
-      return {
-        outcome: 'process',
-        row: {
-          id: reclaimed.id,
-          chatSessionId: reclaimed.chatSessionId,
-          clientMessageId: reclaimed.clientMessageId,
-          processingStatus: reclaimed.processingStatus,
-          processingStartedAt: reclaimed.processingStartedAt,
-        },
-      };
+      return this.toProcessOutcome(reclaimed);
     }
     // Someone else reclaimed it first
     return { outcome: 'pending' };
@@ -361,40 +318,65 @@ export class ChatProcessingService {
 
   private async handleFailed(
     sessionId: string,
-    clientMessageId: string,
     message: string,
-    existing: { id: string },
-  ): Promise<{
-    outcome: 'process';
-    row: {
-      id: string;
-      chatSessionId: string;
-      clientMessageId: string | null;
-      processingStatus: string | null;
-      processingStartedAt: Date | null;
-    };
-  }> {
+    existing: { id: string; retryCount: number; clientMessageId: string | null },
+  ): Promise<InsertOrClaimResult> {
+    if (existing.retryCount >= MAX_FAILED_RETRIES) {
+      // Dead-letter: stop cycling, mark completed, return fallback
+      await this.database.db
+        .update(chatMessages)
+        .set({ processingStatus: 'completed' })
+        .where(
+          and(
+            eq(chatMessages.id, existing.id),
+            eq(chatMessages.chatSessionId, sessionId),
+          ),
+        );
+      return {
+        outcome: 'completed',
+        reply: {
+          clientMessageId: existing.clientMessageId ?? '',
+          processingStatus: 'completed',
+          message: FALLBACK_RESPONSE,
+          shouldShowWhatsappCta: false,
+          isBuyingIntentDetected: false,
+          shouldCaptureLead: false,
+          whatsappUrl: null,
+          detectedProduct: null,
+        },
+      };
+    }
+
     const [reclaimed] = await this.database.db
       .update(chatMessages)
-      .set({ processingStatus: 'pending', processingStartedAt: new Date(), message })
+      .set({
+        processingStatus: 'pending',
+        processingStartedAt: new Date(),
+        message,
+        retryCount: existing.retryCount + 1,
+      })
       .where(
         and(
           eq(chatMessages.id, existing.id),
           eq(chatMessages.chatSessionId, sessionId),
+          eq(chatMessages.processingStatus, 'failed'),
         ),
       )
       .returning();
 
-    if (!reclaimed) throw new Error('Failed to reclaim failed message');
+    if (!reclaimed) return { outcome: 'pending' };
+    return this.toProcessOutcome(reclaimed);
+  }
 
+  private toProcessOutcome(row: ProcessRow): { outcome: 'process'; row: ProcessRow } {
     return {
       outcome: 'process',
       row: {
-        id: reclaimed.id,
-        chatSessionId: reclaimed.chatSessionId,
-        clientMessageId: reclaimed.clientMessageId,
-        processingStatus: reclaimed.processingStatus,
-        processingStartedAt: reclaimed.processingStartedAt,
+        id: row.id,
+        chatSessionId: row.chatSessionId,
+        clientMessageId: row.clientMessageId,
+        processingStatus: row.processingStatus,
+        processingStartedAt: row.processingStartedAt,
       },
     };
   }
