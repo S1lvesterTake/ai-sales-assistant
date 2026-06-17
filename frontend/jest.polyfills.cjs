@@ -5,6 +5,10 @@ const { ReadableStream, TransformStream, WritableStream } = require("node:stream
 const { BroadcastChannel, MessageChannel, MessagePort } = require("node:worker_threads");
 const { clearImmediate, setImmediate } = require("node:timers");
 
+if (typeof globalThis.structuredClone === "undefined") {
+  globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
+}
+
 Object.assign(globalThis, {
   Blob,
   BroadcastChannel,

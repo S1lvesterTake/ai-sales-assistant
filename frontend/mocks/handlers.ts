@@ -19,8 +19,12 @@ import {
 } from "@/mocks/fixtures";
 import type { ApiErrorResponse } from "@/types/api";
 import type { LoginInput } from "@/types/auth";
+import type { BusinessProfile, BusinessProfileInput } from "@/types/business";
 import type { ChatReply } from "@/types/chat";
 import type { Lead } from "@/types/lead";
+
+// Mutable mock business profile state (starts with the demo fixture)
+let mockBusinessProfile: BusinessProfile = structuredClone(businessProfileFixture);
 
 const apiUrl = (path: string) =>
   new URL(path, getPublicEnv().NEXT_PUBLIC_API_BASE_URL).toString();
@@ -302,7 +306,56 @@ export const handlers = [
     return HttpResponse.json({
       success: true,
       message: "Business profile retrieved successfully",
-      data: businessProfileFixture,
+      data: mockBusinessProfile,
+    });
+  }),
+  http.post(apiUrl("/api/business-profile"), async ({ request }) => {
+    if (!hasDemoAuthorization(request)) return unauthorized();
+    const input = (await request.json()) as Partial<BusinessProfileInput>;
+    if (!input.businessName || !input.whatsappNumber) {
+      return HttpResponse.json<ApiErrorResponse>(
+        {
+          success: false,
+          message: "Validation failed",
+          errors: [{ field: "businessName", message: "Business name is required" }],
+        },
+        { status: 400 },
+      );
+    }
+    const now = new Date().toISOString();
+    const profile: BusinessProfile = {
+      id: crypto.randomUUID(),
+      slug: input.slug ?? "new-business",
+      businessName: input.businessName,
+      whatsappNumber: input.whatsappNumber,
+      ...(input.description ? { description: input.description } : {}),
+      ...(input.category ? { category: input.category } : {}),
+      ...(input.location ? { location: input.location } : {}),
+      ...(input.operatingHours ? { operatingHours: input.operatingHours } : {}),
+      ...(input.mainOffer ? { mainOffer: input.mainOffer } : {}),
+      ...(input.ctaMessage ? { ctaMessage: input.ctaMessage } : {}),
+      createdAt: now,
+      updatedAt: now,
+    };
+    mockBusinessProfile = profile;
+    return HttpResponse.json(
+      { success: true, message: "Business profile created successfully", data: profile },
+      { status: 201 },
+    );
+  }),
+  http.patch(apiUrl("/api/business-profile"), async ({ request }) => {
+    if (!hasDemoAuthorization(request)) return unauthorized();
+    const input = (await request.json()) as Partial<BusinessProfileInput>;
+    const updated: BusinessProfile = {
+      ...mockBusinessProfile,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+    mockBusinessProfile = updated;
+    return HttpResponse.json({
+      success: true,
+      message: "Business profile updated successfully",
+      data: updated,
     });
   }),
   http.get(apiUrl("/api/products"), ({ request }) => {
