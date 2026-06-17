@@ -23,7 +23,9 @@ import {
 import type { Response } from 'express';
 import { ResponseMessage } from '../../common/decorators/response-message.decorator';
 import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
+import { BusinessSlugParamDto } from '../business-profile/dto/business-slug-param.dto';
 import { ChatService } from './chat.service';
+import { ChatSessionRouteParamsDto } from './dto/chat-session-route-params.dto';
 import { ChatReplyEnvelopeDto } from './dto/chat-reply-response.dto';
 import { ChatSessionEnvelopeDto } from './dto/chat-session-response.dto';
 import { ChatHistoryQueryDto } from './dto/chat-history-query.dto';
@@ -42,10 +44,10 @@ export class ChatController {
   @ApiNotFoundResponse({ type: ApiErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   createSession(
-    @Param('businessSlug') businessSlug: string,
+    @Param() params: BusinessSlugParamDto,
     @Body() input: CreateChatSessionDto,
   ) {
-    return this.service.createSession(businessSlug, input);
+    return this.service.createSession(params.businessSlug, input);
   }
 
   @Post('sessions/:sessionId/messages')
@@ -63,14 +65,13 @@ export class ChatController {
   @ApiNotFoundResponse({ type: ApiErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   sendMessage(
-    @Param('businessSlug') businessSlug: string,
-    @Param('sessionId') sessionId: string,
+    @Param() params: ChatSessionRouteParamsDto,
     @Headers('x-chat-session-token') token: string,
     @Body() input: SendMessageInput,
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.service
-      .sendMessage(businessSlug, sessionId, token, input)
+      .sendMessage(params.businessSlug, params.sessionId, token, input)
       .then((result) => {
         if (result.data.processingStatus === 'pending') {
           response.status(202);
@@ -92,11 +93,10 @@ export class ChatController {
   @ApiNotFoundResponse({ type: ApiErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   getHistory(
-    @Param('businessSlug') businessSlug: string,
-    @Param('sessionId') sessionId: string,
+    @Param() params: ChatSessionRouteParamsDto,
     @Query() query: ChatHistoryQueryDto,
     @Headers('x-chat-session-token') token: string,
   ) {
-    return this.service.getHistory(businessSlug, sessionId, token, query);
+    return this.service.getHistory(params.businessSlug, params.sessionId, token, query);
   }
 }

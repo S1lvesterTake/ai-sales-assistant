@@ -3,6 +3,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -41,6 +42,7 @@ export const chatMessages = pgTable(
     }),
     role: chatMessageRole('role').notNull(),
     message: text('message').notNull(),
+    retryCount: integer('retry_count').notNull().default(0),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

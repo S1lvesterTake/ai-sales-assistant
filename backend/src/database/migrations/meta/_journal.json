@@ -8,6 +8,13 @@
       "when": 1781523525613,
       "tag": "0000_glorious_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781707467591,
+      "tag": "0001_chat_messages_retry_count",
+      "breakpoints": true
     }
   ]
 }

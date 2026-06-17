@@ -22,15 +22,15 @@ export const leadsService = {
     return client.request<Lead>("/api/leads", { method: "POST", body: input });
   },
   createFromChat(
+    businessSlug: string,
     input: PublicLeadInput,
     sessionToken: string,
     client: ApiClient = publicApiClient,
   ) {
-    return client.request<Lead>("/api/leads", {
-      method: "POST",
-      body: input,
-      sessionToken,
-    });
+    return client.request<Lead>(
+      `/api/leads/from-chat/${encodeURIComponent(businessSlug)}`,
+      { method: "POST", body: input, sessionToken },
+    );
   },
   updateStatus(client: ApiClient, id: string, status: LeadStatus) {
     return client.request<Lead>(`/api/leads/${encodeURIComponent(id)}/status`, {

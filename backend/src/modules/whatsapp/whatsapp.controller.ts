@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { ResponseMessage } from '../../common/decorators/response-message.decorator';
 import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
+import { BusinessSlugParamDto } from '../business-profile/dto/business-slug-param.dto';
 import { WhatsappService } from './whatsapp.service';
 import { TrackWhatsappClickInput } from './dto/whatsapp-click.dto';
 import { WhatsappClickEnvelopeDto } from './dto/whatsapp-click.dto';
@@ -42,12 +43,12 @@ export class WhatsappController {
   @ApiNotFoundResponse({ type: ApiErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   getLink(
-    @Param('businessSlug') businessSlug: string,
+    @Param() params: BusinessSlugParamDto,
     @Query() query: WhatsappLinkQueryDto,
     @Headers('x-chat-session-token') token?: string,
   ) {
     return this.service.generateLink(
-      businessSlug,
+      params.businessSlug,
       query.sessionId,
       query.leadId,
       token,
@@ -67,12 +68,12 @@ export class WhatsappController {
   @ApiNotFoundResponse({ type: ApiErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ApiErrorResponseDto })
   trackClick(
-    @Param('businessSlug') businessSlug: string,
+    @Param() params: BusinessSlugParamDto,
     @Body() input: TrackWhatsappClickInput,
     @Headers('x-chat-session-token') token?: string,
   ) {
     return this.service.trackClick(
-      businessSlug,
+      params.businessSlug,
       input.sessionId,
       input.leadId,
       token,
