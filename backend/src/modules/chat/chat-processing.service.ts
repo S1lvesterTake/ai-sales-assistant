@@ -187,7 +187,9 @@ export class ChatProcessingService {
     return this.toProcessOutcome(inserted);
   }
 
-  private async callAiWithRetry(input: Parameters<AiProvider['generateResponse']>[0]) {
+  private async callAiWithRetry(
+    input: Parameters<AiProvider['generateResponse']>[0],
+  ) {
     const timeoutMs = this.config.get<number>('AI_TIMEOUT_MS') ?? 8_000;
     const startTime = Date.now();
     try {
@@ -233,7 +235,11 @@ export class ChatProcessingService {
     },
   ): Promise<InsertOrClaimResult> {
     if (existing.processingStatus === 'completed') {
-      return this.handleCompleted(sessionId, existing.clientMessageId ?? '', existing);
+      return this.handleCompleted(
+        sessionId,
+        existing.clientMessageId ?? '',
+        existing,
+      );
     }
     if (existing.processingStatus === 'pending') {
       return this.handlePending(sessionId, message, existing);
@@ -250,7 +256,10 @@ export class ChatProcessingService {
     existing: { id: string },
   ): Promise<{ outcome: 'completed'; reply: ChatReplyResponse }> {
     const [assistant] = await this.database.db
-      .select({ message: chatMessages.message, metadata: chatMessages.metadata })
+      .select({
+        message: chatMessages.message,
+        metadata: chatMessages.metadata,
+      })
       .from(chatMessages)
       .where(
         and(
@@ -279,7 +288,9 @@ export class ChatProcessingService {
         whatsappUrl:
           typeof meta.whatsappUrl === 'string' ? meta.whatsappUrl : null,
         detectedProduct:
-          typeof meta.detectedProduct === 'string' ? meta.detectedProduct : null,
+          typeof meta.detectedProduct === 'string'
+            ? meta.detectedProduct
+            : null,
       },
     };
   }
@@ -319,7 +330,11 @@ export class ChatProcessingService {
   private async handleFailed(
     sessionId: string,
     message: string,
-    existing: { id: string; retryCount: number; clientMessageId: string | null },
+    existing: {
+      id: string;
+      retryCount: number;
+      clientMessageId: string | null;
+    },
   ): Promise<InsertOrClaimResult> {
     if (existing.retryCount >= MAX_FAILED_RETRIES) {
       // Dead-letter: stop cycling, mark completed, return fallback
@@ -368,7 +383,10 @@ export class ChatProcessingService {
     return this.toProcessOutcome(reclaimed);
   }
 
-  private toProcessOutcome(row: ProcessRow): { outcome: 'process'; row: ProcessRow } {
+  private toProcessOutcome(row: ProcessRow): {
+    outcome: 'process';
+    row: ProcessRow;
+  } {
     return {
       outcome: 'process',
       row: {

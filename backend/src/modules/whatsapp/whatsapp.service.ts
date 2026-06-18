@@ -35,7 +35,10 @@ export class WhatsappService {
     leadId?: string,
     rawToken?: string,
   ): Promise<{ url: string }> {
-    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
+    const profile = await resolveBusinessWithWhatsappBySlug(
+      this.database,
+      businessSlug,
+    );
 
     await this.authorizeContext(profile, sessionId, leadId, rawToken);
 
@@ -136,5 +139,4 @@ export class WhatsappService {
       leadId: leadIdToRecord,
     };
   }
-
 }
