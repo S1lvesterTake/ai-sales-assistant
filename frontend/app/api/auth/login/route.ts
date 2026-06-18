@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const session = await authenticateUser(parsed.data);
+    const { returnTo, ...credentials } = parsed.data;
+    const session = await authenticateUser(credentials);
     const expires = new Date(session.expiresAt);
     if (Number.isNaN(expires.getTime()) || expires <= new Date()) {
       return errorResponse("Sesi login tidak dapat dibuat.", 502);
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       data: {
         user: session.user,
         expiresAt: session.expiresAt,
-        redirectTo: getSafeDashboardReturnTo(parsed.data.returnTo),
+        redirectTo: getSafeDashboardReturnTo(returnTo),
       },
     });
     response.headers.set("Cache-Control", "no-store");

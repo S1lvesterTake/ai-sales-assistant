@@ -6,7 +6,9 @@ RUN npm ci
 FROM dependencies AS build
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
-RUN npm run build && npm prune --omit=dev
+RUN npm run build && \
+    cp -r src/database/migrations dist/src/database/migrations && \
+    npm prune --omit=dev
 
 FROM node:24.15.0-alpine AS runtime
 ENV NODE_ENV=production
@@ -16,4 +18,4 @@ COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 USER node
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "node dist/src/database/migrate.js && node dist/src/database/seeds/demo.seed.js seed && exec node dist/src/main.js"]

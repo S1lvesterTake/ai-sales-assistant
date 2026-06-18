@@ -5,9 +5,8 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
 import { DatabaseService } from '../../database/database.service';
-import { businessProfiles } from '../../database/schema';
+import { resolveBusinessBySlug } from '../../common/utils/slug';
 import {
   InvalidIndonesianPhoneError,
   normalizeIndonesianPhone,
@@ -66,7 +65,7 @@ export class LeadsService {
     rawToken: string,
     input: CreateLeadDto,
   ) {
-    const profile = await this.resolveBusiness(businessSlug);
+    const profile = await resolveBusinessBySlug(this.database, businessSlug);
 
     if (!rawToken) {
       throw new UnauthorizedException({
@@ -178,29 +177,6 @@ export class LeadsService {
         ],
       });
     }
-  }
-
-  private async resolveBusiness(slug: string) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      throw new UnprocessableEntityException({
-        message: 'Format slug bisnis tidak valid',
-        code: 'VALIDATION_ERROR',
-      });
-    }
-
-    const [profile] = await this.database.db
-      .select({ id: businessProfiles.id, slug: businessProfiles.slug })
-      .from(businessProfiles)
-      .where(eq(businessProfiles.slug, slug))
-      .limit(1);
-
-    if (!profile) {
-      throw new NotFoundException({
-        message: 'Bisnis tidak ditemukan',
-        code: 'BUSINESS_NOT_FOUND',
-      });
-    }
-    return profile;
   }
 
   private async resolveOwnedChatSession(

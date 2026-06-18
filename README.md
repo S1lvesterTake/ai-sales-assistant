@@ -126,7 +126,9 @@ ai-sales-assistant/
 │   ├── tests/                      # 135+ unit/component tests
 │   ├── e2e/                        # 14+ Playwright specs
 │   └── Dockerfile
-├── docker-compose.yml              # PostgreSQL + backend + frontend
+├── docker-compose.yml              # Dev mode: hot-reload, volume mounts
+├── docker-compose.prod.yml         # Production mode: compiled images, no mounts
+├── Makefile                        # Convenience commands (make dev / prod / reset …)
 ├── docs/
 │   ├── PRD_AI_Sales_Assistant_for_UMKM.md
 │   ├── CLAUDE.md
@@ -151,13 +153,13 @@ ai-sales-assistant/
 ```bash
 git clone https://github.com/S1lvesterTake/ai-sales-assistant.git
 cd ai-sales-assistant
-docker compose up
+make dev          # or: docker compose up --build
 ```
 
 This starts three services:
 - **PostgreSQL 16** on port 5432 (auto-creates database)
-- **Backend** on port 3001 (auto-migrates + seeds demo data, uses `AI_PROVIDER=fake`)
-- **Frontend** on port 3000 (Next.js dev server, API mocking disabled)
+- **Backend** on port 3001 — auto-migrates, seeds demo data, starts in watch mode (`AI_PROVIDER=fake`)
+- **Frontend** on port 3000 — Next.js dev server with hot-reload
 
 ### 2. Open the app
 
@@ -343,25 +345,106 @@ Every UI component handles: **loading**, **empty**, **error**, and **success** s
 
 ## Deployment
 
-### Docker (local)
+### Two local modes
+
+| Mode | Command | What it does |
+|---|---|---|
+| **Dev** | `make dev` | Hot-reload, volume mounts, source maps |
+| **Prod** | `make prod` | Compiled production images, no volume mounts |
+
+---
+
+### Dev mode (`make dev`)
+
+Uses `docker-compose.yml`. Source files are volume-mounted so code changes trigger instant reload.
 
 ```bash
-docker compose up -d          # Start all services detached
-docker compose logs -f backend  # Follow backend logs
-docker compose down -v          # Stop and remove volumes
+make dev                      # start (or: docker compose up --build)
+make down                     # stop containers
+make reset                    # stop + wipe all volumes (fresh database)
+make logs                     # follow logs from all services
+make seed                     # re-run the demo seed against a running stack
 ```
 
-### Railway (production)
+**What happens on first start:**
 
-Each service is a separate Railway service from a single repo:
+```
+PostgreSQL ready
+  └── Backend: npm run build
+            → npm run db:migrate     (runs Drizzle migrations)
+            → demo seed              (creates kopi-senja-umkm account + data)
+            → npm run start:dev      (NestJS watch mode)
+  └── Frontend: npm run dev          (Next.js dev server)
+```
+
+The seed is **idempotent** — safe to re-run; it upserts rather than duplicates.
+
+---
+
+### Production mode (`make prod`)
+
+Uses `docker-compose.prod.yml`. Builds optimised images from the `runtime` (backend) and `runner` (frontend) Dockerfile stages — no source mounts, no dev tooling.
+
+```bash
+make prod                     # build images + start (or: docker compose -f docker-compose.prod.yml up --build)
+docker compose -f docker-compose.prod.yml down -v   # stop + wipe prod volumes
+```
+
+**What happens inside the backend production image on startup:**
+
+```
+node dist/src/database/migrate.js        # programmatic Drizzle migration (no drizzle-kit needed)
+node dist/src/database/seeds/demo.seed.js seed   # idempotent demo seed
+exec node dist/src/main.js               # NestJS server (PID 1)
+```
+
+Migrations are baked into the image at build time (`src/database/migrations/` → `dist/src/database/migrations/`).
+
+The frontend image bakes `NEXT_PUBLIC_*` env vars at image build time (Next.js requirement for static optimisation).
+
+---
+
+### Default environment (both modes)
+
+Both compose files ship with safe local defaults — no secrets required to run:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `AI_PROVIDER` | `fake` | No OpenAI key needed. Change to `openai` + set `OPENAI_API_KEY` for real AI responses |
+| `JWT_SECRET` | `local-*-jwt-secret-…` | Replace for any shared/internet-facing environment |
+| `DEMO_USER_PASSWORD` | `DemoKopiSenja2026!` | Password for the `demo@kopisenja.id` login |
+| `DATABASE_URL` | `postgres://postgres:postgres@postgres:5432/ai_sales_assistant` | Points to the compose Postgres service |
+
+To use a real OpenAI key in dev mode, edit `docker-compose.yml`:
+
+```yaml
+AI_PROVIDER: openai
+OPENAI_API_KEY: sk-…
+```
+
+---
+
+### Ports
+
+| Service | Port | URL |
+|---|---|---|
+| Frontend | 3000 | `http://localhost:3000` |
+| Backend API | 3001 | `http://localhost:3001/api/docs` |
+| PostgreSQL | 5432 | `postgresql://postgres:postgres@localhost:5432/ai_sales_assistant` |
+
+---
+
+### Railway (cloud)
+
+Each service maps to a separate Railway service from this repo:
 
 | Service | Source | Notes |
 |---|---|---|
-| PostgreSQL | Railway DB service | Managed PostgreSQL |
-| Backend | `backend/` Dockerfile | `NODE_ENV=production` |
-| Frontend | `frontend/` Dockerfile | `NODE_ENV=production` |
+| PostgreSQL | Railway DB service | Managed PostgreSQL — copy `DATABASE_URL` into backend env |
+| Backend | `backend/` Dockerfile (`runtime` stage) | Set `NODE_ENV=production`, `AI_PROVIDER`, `JWT_SECRET`, `DEMO_USER_PASSWORD` |
+| Frontend | `frontend/` Dockerfile (`runner` stage) | Set `NEXT_PUBLIC_API_BASE_URL` to the deployed backend URL at **build time** |
 
-Environment variables are set per-service in Railway, not committed to the repo.
+The backend image already handles migrations + seed on every startup — no separate migration step needed in Railway's deploy pipeline.
 
 ---
 

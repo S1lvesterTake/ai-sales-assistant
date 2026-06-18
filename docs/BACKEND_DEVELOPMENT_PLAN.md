@@ -5,7 +5,7 @@
 - Project: AI Sales Assistant for UMKM
 - Scope: Standalone backend MVP
 - Status: Ready for execution
-- Current part: BE-11 - Standalone Hardening and Delivery
+- Current part: Complete (all BE-00 through BE-11 finished)
 - First implementation part: BE-00 - Backend Project Foundation
 - Last updated: 2026-06-15
 - Canonical requirements: PRD_AI_Sales_Assistant_for_UMKM.md
@@ -126,7 +126,7 @@ Excluded until a separate integration task:
 | BE-08 | Lead Capture and Management | COMPLETE | BE-04, BE-06, BE-07 | Phone, duplicate, ownership, and chat-link tests |
 | BE-09 | WhatsApp Link and Click Tracking | COMPLETE | BE-04, BE-06 | Relation authorization and URL tests |
 | BE-10 | Dashboard and Owner Conversation Reads | COMPLETE | BE-07, BE-08, BE-09 | Aggregate SQL, bounded lists, ownership tests |
-| BE-11 | Standalone Hardening and Delivery | IN_PROGRESS | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
+| BE-11 | Standalone Hardening and Delivery | COMPLETE | BE-00 through BE-10 | Full backend gates, EXPLAIN, migration, image startup |
 
 ## Locked Backend Decisions
 

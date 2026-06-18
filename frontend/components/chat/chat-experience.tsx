@@ -415,6 +415,7 @@ export function ChatExperience({ businessSlug }: { businessSlug: string }) {
           {state.pendingLeadReply && session ? (
             <LeadCaptureForm
               businessName={business.businessName}
+              businessSlug={businessSlug}
               chatSessionId={session.sessionId}
               {...(state.pendingLeadReply.detectedProduct
                 ? {
