@@ -81,7 +81,7 @@ In the Railway service → **Variables** tab, add all of the following:
 | `CHAT_STALE_CLAIM_MS` | `30000` |
 | `CHAT_SESSION_CREATE_LIMIT` | `10` |
 | `CHAT_MESSAGE_LIMIT` | `20` |
-| `DEMO_USER_PASSWORD` | `DemoKopiSenja2026!` |
+| `DEMO_USER_PASSWORD` | *(choose a password — local dev default: see `.env.example`)* |
 | `DEMO_DATA_RESET_ON_DEPLOY` | `true` |
 | `DATABASE_POOL_MAX` | `10` |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | `5000` |
@@ -90,6 +90,8 @@ In the Railway service → **Variables** tab, add all of the following:
 | `RATE_LIMIT_TTL_MS` | `60000` |
 
 > **Note on `FRONTEND_URL`:** This is a Railway reference variable. Railway resolves it at runtime to the frontend service's public domain. It controls the CORS `origin` header — the backend will only accept requests from the frontend's URL.
+>
+> **Warning:** The value must include the `https://` scheme. A bare domain without the prefix (e.g., `my-app.up.railway.app` instead of `https://my-app.up.railway.app`) causes `new URL()` to throw `Invalid URL` during startup validation, crashing the backend before it starts.
 
 > **Note on `DEMO_DATA_RESET_ON_DEPLOY=true`:** The backend CMD runs the demo seed on every startup, resetting Kopi Senja demo data to a clean state on each deploy. This keeps the portfolio demo predictable.
 
@@ -171,6 +173,12 @@ If you want stable URLs (e.g. for a portfolio README link), assign custom domain
 1. Backend service → **Settings** → **Networking** → **Custom Domain**
 2. Frontend service → **Settings** → **Networking** → **Custom Domain**
 3. After setting a custom domain for the backend, update `NEXT_PUBLIC_API_BASE_URL` in the frontend service and redeploy the frontend so the bundle is rebuilt with the new URL.
+
+> **CORS note:** After assigning a custom domain to the frontend, both the custom domain and the original Railway URL (`https://<service>.up.railway.app`) remain live — but `FRONTEND_URL` only allows one origin. Update `FRONTEND_URL` on the backend to include both, comma-separated:
+> ```
+> FRONTEND_URL=https://my-custom-domain.com,https://<original-frontend>.up.railway.app
+> ```
+> The backend's origin parser already supports comma-separated values. Omitting the Railway URL from the list will CORS-block it.
 
 ---
 
