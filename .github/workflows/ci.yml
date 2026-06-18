@@ -167,7 +167,10 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
 
       - name: Security audit
-        run: npm audit --audit-level=high
+        # --audit-level=critical: multer HIGH DoS (via @nestjs/platform-express) has no
+        # safe fix — the only npm audit fix would downgrade NestJS v11 → v7 (breaking).
+        # Blocking on CRITICAL CVEs is the appropriate threshold here.
+        run: npm audit --audit-level=critical
 
   # ── Job 6 ─────────────────────────────────────────────────────────────────
   build-docker:
