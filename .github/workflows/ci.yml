@@ -1,0 +1,195 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1 ─────────────────────────────────────────────────────────────────
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+  # ── Job 2 ─────────────────────────────────────────────────────────────────
+  type-check:
+    name: Type Check
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  # ── Job 3 ─────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Lint
+        run: npm run lint
+
+  # ── Job 4 ─────────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests & Coverage
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      PORT: 3001
+      FRONTEND_URL: http://localhost:3000
+      RATE_LIMIT_LIMIT: 100
+      RATE_LIMIT_TTL_MS: 60000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+      DATABASE_POOL_MAX: 10
+      DATABASE_CONNECTION_TIMEOUT_MS: 5000
+      DATABASE_IDLE_TIMEOUT_MS: 30000
+      JWT_SECRET: ci-test-jwt-secret-at-least-32-characters-long
+      JWT_EXPIRES_IN: 3600
+      AI_PROVIDER: fake
+      OPENAI_API_KEY: ''
+      OPENAI_MODEL: gpt-4o-mini
+      AI_TIMEOUT_MS: 8000
+      CHAT_SESSION_TTL: 86400
+      CHAT_STALE_CLAIM_MS: 30000
+      CHAT_SESSION_CREATE_LIMIT: 10
+      CHAT_MESSAGE_LIMIT: 20
+      DEMO_USER_PASSWORD: CiTestPassword123!
+      DEMO_DATA_RESET_ON_DEPLOY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Run unit tests with coverage
+        # Threshold set to current baseline (10.78%). Raise this as test coverage grows.
+        run: |
+          npm run test -- --coverage --coverageThreshold='{"global":{"lines":10}}'
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/coverage/
+          retention-days: 7
+
+  # ── Job 5 ─────────────────────────────────────────────────────────────────
+  security-audit:
+    name: Security Audit
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Security audit
+        # --audit-level=critical: multer HIGH DoS (via @nestjs/platform-express) has no
+        # safe fix — the only npm audit fix would downgrade NestJS v11 → v7 (breaking).
+        # Blocking on CRITICAL CVEs is the appropriate threshold here.
+        run: npm audit --audit-level=critical
+
+  # ── Job 6 ─────────────────────────────────────────────────────────────────
+  build-docker:
+    name: Build Docker Image
+    needs: [type-check, lint, test, security-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: ai-sales-assistant-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
