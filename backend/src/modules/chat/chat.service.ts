@@ -1,6 +1,5 @@
 import {
   Injectable,
-  NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -70,7 +69,10 @@ export class ChatService {
       });
     }
 
-    const profile = await resolveBusinessWithWhatsappBySlug(this.database, businessSlug);
+    const profile = await resolveBusinessWithWhatsappBySlug(
+      this.database,
+      businessSlug,
+    );
 
     await this.auth.authorize(sessionId, profile.id, rawToken);
 

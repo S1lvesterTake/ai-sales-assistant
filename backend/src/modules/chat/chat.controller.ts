@@ -97,6 +97,11 @@ export class ChatController {
     @Query() query: ChatHistoryQueryDto,
     @Headers('x-chat-session-token') token: string,
   ) {
-    return this.service.getHistory(params.businessSlug, params.sessionId, token, query);
+    return this.service.getHistory(
+      params.businessSlug,
+      params.sessionId,
+      token,
+      query,
+    );
   }
 }
