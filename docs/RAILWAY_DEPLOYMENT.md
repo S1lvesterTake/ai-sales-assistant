@@ -1,202 +1,292 @@
 # Railway Deployment Guide
 
-This guide walks through deploying the AI Sales Assistant for UMKM on [Railway](https://railway.app). The app runs as three independent services: PostgreSQL (managed plugin), NestJS backend, and Next.js frontend.
-
----
-
-## Prerequisites
-
-- A Railway account (free tier works for demo use)
-- This repository pushed to GitHub (public or private)
-- `openssl` available locally to generate a JWT secret
-
----
-
-## Architecture Overview
+## Architecture on Railway
 
 ```
 Railway Project
-├── PostgreSQL   (Railway managed plugin)
-├── backend      (NestJS — ./backend/Dockerfile)
-└── frontend     (Next.js — ./frontend/Dockerfile)
+├── backend   (Docker — backend/Dockerfile)
+├── frontend  (Docker — frontend/Dockerfile)
+└── postgres  (Railway PostgreSQL plugin)
 ```
 
-**Internal private networking (Railway resolves automatically):**
-| Route | Connection |
-|---|---|
-| Frontend SSR → Backend | `http://backend.railway.internal:3001` |
-| Backend → PostgreSQL | injected via `${{Postgres.DATABASE_URL}}` |
-
 ---
 
-## Step 1: Create the Railway Project
+## One-Time Setup Checklist
 
-1. Go to [railway.app](https://railway.app) → **New Project**
-2. Select **Deploy from GitHub repo** → authorize and select your repo
-3. Railway will detect the repo — **do not auto-deploy yet**, cancel the initial deploy prompt if it appears
-
----
-
-## Step 2: Add PostgreSQL Plugin
-
-1. In your Railway project dashboard → **+ New** → **Database** → **PostgreSQL**
-2. Railway provisions a managed Postgres 16 instance and exposes `DATABASE_URL` as a reference variable
-3. No further configuration needed
-
----
-
-## Step 3: Configure the Backend Service
-
-### Service setup
-
-1. **+ New** → **GitHub Repo** → select the repo → set **Root Directory** to `/backend`
-2. Railway auto-detects `backend/railway.toml` and `backend/Dockerfile`
-3. Do **not** deploy yet — set env vars first
-
-### Generate JWT secret
+### 1. Railway Project & GitHub Connection
 
 ```bash
-openssl rand -hex 32
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login
+railway login
+
+# Link repo to existing project (run from repo root)
+railway link
 ```
 
-Copy the output — you will paste it as `JWT_SECRET` below.
-
-### Backend environment variables
-
-In the Railway service → **Variables** tab, add all of the following:
-
-| Variable | Value |
-|---|---|
-| `NODE_ENV` | `production` |
-| `PORT` | `3001` |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-| `FRONTEND_URL` | `https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}` |
-| `JWT_SECRET` | *(paste your generated secret)* |
-| `JWT_EXPIRES_IN` | `3600` |
-| `AI_PROVIDER` | `fake` |
-| `OPENAI_API_KEY` | *(leave blank)* |
-| `OPENAI_MODEL` | `gpt-4o-mini` |
-| `AI_TIMEOUT_MS` | `8000` |
-| `CHAT_SESSION_TTL` | `86400` |
-| `CHAT_STALE_CLAIM_MS` | `30000` |
-| `CHAT_SESSION_CREATE_LIMIT` | `10` |
-| `CHAT_MESSAGE_LIMIT` | `20` |
-| `DEMO_USER_PASSWORD` | *(choose a password — local dev default: see `.env.example`)* |
-| `DEMO_DATA_RESET_ON_DEPLOY` | `true` |
-| `DATABASE_POOL_MAX` | `10` |
-| `DATABASE_CONNECTION_TIMEOUT_MS` | `5000` |
-| `DATABASE_IDLE_TIMEOUT_MS` | `30000` |
-| `RATE_LIMIT_LIMIT` | `100` |
-| `RATE_LIMIT_TTL_MS` | `60000` |
-
-> **Note on `FRONTEND_URL`:** This is a Railway reference variable. Railway resolves it at runtime to the frontend service's public domain. It controls the CORS `origin` header — the backend will only accept requests from the frontend's URL.
->
-> **Warning:** The value must include the `https://` scheme. A bare domain without the prefix (e.g., `my-app.up.railway.app` instead of `https://my-app.up.railway.app`) causes `new URL()` to throw `Invalid URL` during startup validation, crashing the backend before it starts.
-
-> **Note on `DEMO_DATA_RESET_ON_DEPLOY=true`:** The backend CMD runs the demo seed on every startup, resetting Kopi Senja demo data to a clean state on each deploy. This keeps the portfolio demo predictable.
-
-### Deploy backend
-
-Click **Deploy**. Wait for the healthcheck at `/api/health` to turn green (usually 30–60 s). You can follow logs in the Railway dashboard.
+In Railway Dashboard:
+- **Settings → GitHub** → connect repo
+- **Settings → Deployments** → set "Deploy on push to `main`"
+- Enable "Wait for CI to pass" if you want CI gate before deploy
 
 ---
 
-## Step 4: Configure the Frontend Service
+### 2. PostgreSQL Plugin
 
-### Service setup
+In Railway Dashboard:
+1. Click **"New"** → **"Database"** → **"Add PostgreSQL"**
+2. Railway injects `DATABASE_URL` automatically into all services in the same project
+3. Verify: `DATABASE_URL` appears in your backend service's **Variables** tab
 
-1. **+ New** → **GitHub Repo** → select the repo → set **Root Directory** to `/frontend`
-2. Railway auto-detects `frontend/railway.toml` and `frontend/Dockerfile`
-3. Do **not** deploy yet — set env vars first
+---
 
-### Frontend environment variables
+### 3. Backend Service Variables
 
-> **Critical:** `NEXT_PUBLIC_API_BASE_URL` is baked into the Next.js bundle at build time (it is a Docker `ARG`). It must be set in **both** the **Build Variables** tab and the **Variables** tab in Railway, or the deployed frontend will point to `localhost`.
+Set these in Railway → backend service → **Variables**:
 
-In Railway → frontend service → **Variables** tab, add:
+```env
+# Auth
+JWT_SECRET=<generate: openssl rand -base64 32>
+JWT_EXPIRES_IN=7d
 
-| Variable | Value | Notes |
+# AI
+OPENAI_API_KEY=sk-...
+
+# App
+NODE_ENV=production
+PORT=3000
+
+# Chat
+CHAT_SESSION_TTL=86400
+
+# DATABASE_URL is injected automatically by Railway PostgreSQL plugin
+# Do NOT set it manually — Railway manages it
+```
+
+> ⚠️ Never commit `.env` files. Source of truth is Railway Variables UI.
+
+---
+
+### 4. Frontend Service Variables
+
+```env
+NEXT_PUBLIC_API_URL=https://<backend-railway-domain>/api
+NODE_ENV=production
+```
+
+Get the backend domain from Railway → backend service → **Settings → Domains**.
+
+---
+
+### 5. Railway Service Configuration
+
+For **each service** (backend and frontend), set in **Settings**:
+
+| Setting | Backend | Frontend |
 |---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | `https://${{backend.RAILWAY_PUBLIC_DOMAIN}}` | Build + runtime |
-| `NEXT_PUBLIC_DEMO_BUSINESS_SLUG` | `kopi-senja-umkm` | Build + runtime |
-| `NEXT_PUBLIC_API_MOCKING` | `disabled` | Build + runtime |
-| `NEXT_PUBLIC_REPOSITORY_URL` | `https://github.com/S1lvesterTake/ai-sales-assistant` | Build + runtime |
-| `API_BASE_URL` | `http://backend.railway.internal:3001` | Runtime only — SSR calls use private network |
-| `NODE_ENV` | `production` | |
-| `PORT` | `3000` | |
+| **Root Directory** | `backend` | `frontend` |
+| **Builder** | `Dockerfile` | `Dockerfile` |
+| **Dockerfile Path** | `Dockerfile` | `Dockerfile` |
+| **Build Command** | _(empty — uses Dockerfile)_ | _(empty — uses Dockerfile)_ |
+| **Start Command** | _(empty — uses CMD in Dockerfile)_ | _(empty — uses CMD in Dockerfile)_ |
+| **Health Check Path** | `/api/health` | `/` |
+| **Health Check Timeout** | `300` | `300` |
 
-Then go to the **Build Variables** tab and add the same four `NEXT_PUBLIC_*` variables again with the same values.
-
-### Deploy frontend
-
-Click **Deploy**. Railway will resolve `${{backend.RAILWAY_PUBLIC_DOMAIN}}` to the backend's public URL before the Docker build starts, so the Next.js bundle gets the correct API base URL baked in.
+> **Critical:** Dockerfile Path is relative to Root Directory. If Root Directory is `backend`, set Dockerfile Path to `Dockerfile` — NOT `backend/Dockerfile`. Using `/backend/Dockerfile` with an empty Root Directory sets the build context to the repo root, where `package.json` doesn't exist, causing `COPY package.json` to fail.
 
 ---
 
-## Step 5: Verify the Deployment
+## Common Failure Modes & Fixes
 
-Once both services show green in the Railway dashboard:
+### ❌ Build fails: "Cannot find module"
 
-### 1. Backend health check
+**Cause:** `npm ci` in Docker uses `package-lock.json`. If lockfile is stale or missing:
 ```bash
-curl https://<your-backend-domain>.up.railway.app/api/health
+# Fix locally:
+cd backend && npm install
+git add package-lock.json
+git commit -m "chore: regenerate lockfile"
+git push
 ```
-Expected response:
-```json
-{"success":true,"message":"Service is healthy","data":{"status":"ok","database":"up","timestamp":"..."}}
+
+---
+
+### ❌ Build fails: "node: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.xx` not required"
+
+**Cause:** Node 24 requires a newer base image.
+
+Check `backend/Dockerfile` — base image must be:
+```dockerfile
+FROM node:24-alpine AS base
+# NOT node:24-slim or node:24 (debian) unless explicitly tested
 ```
 
-### 2. Frontend landing page
+---
 
-Open `https://<your-frontend-domain>.up.railway.app` in a browser. The landing page should load.
+### ❌ Deploy succeeds but `/api/health` returns 502
 
-### 3. Public chatbot
+**Cause (most common):** App is listening on wrong port.
 
-Navigate to `/chat/kopi-senja-umkm`. The chatbot should respond (fake AI replies instantly).
+Railway injects `PORT` env var. Your app **must** listen on `process.env.PORT`.
 
-### 4. Owner dashboard login
+In NestJS `backend/src/main.ts`:
+```typescript
+const port = configService.get<number>('PORT') ?? 3000;
+await app.listen(port, '0.0.0.0'); // 0.0.0.0 is required, not localhost
+```
 
-Navigate to `/login` and sign in with the demo credentials:
-- **Email:** `demo@kopi-senja.com`
-- **Password:** `DemoKopiSenja2026!`
-
-### 5. Swagger API docs (optional)
-
-`https://<your-backend-domain>.up.railway.app/api/docs`
+> ⚠️ `app.listen(3000)` defaults to `localhost` — Railway's load balancer can't reach it.
 
 ---
 
-## Custom Domains (optional)
+### ❌ Deploy succeeds but app crashes: "DATABASE_URL is not defined"
 
-If you want stable URLs (e.g. for a portfolio README link), assign custom domains in the Railway dashboard:
+**Cause:** Railway PostgreSQL plugin not linked to service, OR service deployed before plugin was added.
 
-1. Backend service → **Settings** → **Networking** → **Custom Domain**
-2. Frontend service → **Settings** → **Networking** → **Custom Domain**
-3. After setting a custom domain for the backend, update `NEXT_PUBLIC_API_BASE_URL` in the frontend service and redeploy the frontend so the bundle is rebuilt with the new URL.
+Fix:
+1. Railway Dashboard → PostgreSQL plugin → **Connect** → select your backend service
+2. Redeploy backend (Railway → backend → **Deploy**)
 
-> **CORS note:** After assigning a custom domain to the frontend, both the custom domain and the original Railway URL (`https://<service>.up.railway.app`) remain live — but `FRONTEND_URL` only allows one origin. Update `FRONTEND_URL` on the backend to include both, comma-separated:
-> ```
-> FRONTEND_URL=https://my-custom-domain.com,https://<original-frontend>.up.railway.app
-> ```
-> The backend's origin parser already supports comma-separated values. Omitting the Railway URL from the list will CORS-block it.
-
----
-
-## Redeploying / Resetting Demo Data
-
-Because `DEMO_DATA_RESET_ON_DEPLOY=true`, every backend restart reseeds the demo business and leads. To force a reset without a code change:
-
-1. Railway dashboard → backend service → **Deployments** → **Redeploy** (re-runs the latest image)
-
-To change demo credentials, update `DEMO_USER_PASSWORD` in the backend service variables and redeploy.
+Verify the variable is present:
+```bash
+railway variables --service backend | grep DATABASE_URL
+```
 
 ---
 
-## Switching to Real OpenAI (optional)
+### ❌ DB migration doesn't run on deploy
 
-To upgrade from the fake AI provider to real GPT responses:
+**Cause:** Migrations are not running automatically.
 
-1. Backend service → Variables → update:
-   - `AI_PROVIDER` → `openai`
-   - `OPENAI_API_KEY` → your key from [platform.openai.com](https://platform.openai.com)
-2. Redeploy the backend. No frontend changes needed.
+Fix — add migration step to `backend/Dockerfile` CMD or entrypoint:
+```dockerfile
+# In backend/Dockerfile, final stage CMD:
+CMD ["sh", "-c", "npm run db:migrate && node dist/main.js"]
+```
+
+Or use a Railway **Deploy Command** override in Settings:
+```
+sh -c "npm run db:migrate && node dist/main.js"
+```
+
+> ✅ `db:migrate` in Drizzle Kit is idempotent — safe to run on every deploy.
+
+---
+
+### ❌ Build fails: "ENOSPC: no space left on device"
+
+**Cause:** Railway free tier build cache limit.
+
+Fix: In Railway → backend service → **Settings** → disable "Build Cache" temporarily, redeploy, then re-enable.
+
+---
+
+### ❌ Frontend can't reach backend: CORS error
+
+**Cause:** Backend CORS config doesn't include Railway frontend domain.
+
+In `backend/src/main.ts`:
+```typescript
+app.enableCors({
+  origin: [
+    process.env.FRONTEND_URL,         // Railway frontend domain
+    'http://localhost:3000',           // local dev
+  ].filter(Boolean),
+  credentials: true,
+});
+```
+
+Add `FRONTEND_URL=https://<frontend-railway-domain>` to backend Railway Variables.
+
+---
+
+### ❌ Health check fails: timeout after 300s
+
+**Cause:** App startup takes too long (common when running migrations on cold start).
+
+Fix: Increase health check timeout in Railway Settings to `600`. Also check that `/api/health` doesn't do expensive ops — it should only ping the DB.
+
+Verify your health endpoint:
+```typescript
+// modules/health/health.controller.ts
+@Get()
+async check() {
+  await this.database.db.execute(sql`SELECT 1`);
+  return { status: 'ok', timestamp: new Date().toISOString() };
+}
+```
+
+---
+
+## Deployment Verification Script
+
+Run this after every Railway deploy:
+
+```bash
+# Replace with your actual Railway backend domain
+BACKEND_URL=https://<your-backend>.railway.app
+
+# 1. Health check
+curl -f "$BACKEND_URL/api/health" && echo "✅ Health OK"
+
+# 2. Auth endpoint reachable (should return 401, not 502)
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/auth/me")
+[ "$STATUS" = "401" ] && echo "✅ Auth endpoint OK (401 expected)" || echo "❌ Auth endpoint returned $STATUS"
+
+# 3. Public chat endpoint reachable
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/chat/nonexistent-slug/session")
+[ "$STATUS" = "404" ] && echo "✅ Chat endpoint OK (404 expected)" || echo "⚠️  Chat endpoint returned $STATUS"
+```
+
+---
+
+## GitHub Actions → Railway Integration (Optional: Deploy Gate)
+
+To trigger Railway deploy only after CI passes, add to `.github/workflows/ci.yml`:
+
+```yaml
+deploy:
+  needs: [typecheck, test, security-audit, docker-build]
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  steps:
+    - name: Trigger Railway Deploy
+      run: |
+        curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          https://backboard.railway.app/graphql/v2 \
+          -d '{"query":"mutation { deploymentTrigger(input: { serviceId: \"${{ secrets.RAILWAY_SERVICE_ID }}\" }) { id } }"}'
+```
+
+Add to GitHub repo secrets:
+- `RAILWAY_TOKEN` — from Railway Dashboard → Account → API Tokens
+- `RAILWAY_SERVICE_ID` — from Railway → backend service → Settings → Service ID
+
+---
+
+## Rollback Procedure
+
+```bash
+# Via CLI — list recent deployments
+railway deployments --service backend
+
+# Rollback to specific deployment
+railway rollback <deployment-id> --service backend
+```
+
+Or via Dashboard: Railway → backend → **Deployments** → click any past deployment → **Rollback**.
+
+---
+
+## Environment Parity Checklist
+
+Before pushing to `main`, verify:
+
+- [ ] `backend/.env.example` reflects all required vars
+- [ ] All new `ConfigService.getOrThrow()` calls have matching Railway Variables set
+- [ ] No `process.env.X` direct access added in this PR (enforced by Husky hook)
+- [ ] `npm run db:generate` was run if schema changed — migration file committed
+- [ ] `npm run build` passes locally before push
