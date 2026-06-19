@@ -86,15 +86,15 @@ For **each service** (backend and frontend), set in **Settings**:
 
 | Setting | Backend | Frontend |
 |---|---|---|
-| **Root Directory** | `backend` | `frontend` |
+| **Root Directory** | _(leave empty)_ | _(leave empty)_ |
 | **Builder** | `Dockerfile` | `Dockerfile` |
-| **Dockerfile Path** | `Dockerfile` | `Dockerfile` |
+| **Dockerfile Path** | `Dockerfile.backend` | `Dockerfile.frontend` |
 | **Build Command** | _(empty — uses Dockerfile)_ | _(empty — uses Dockerfile)_ |
 | **Start Command** | _(empty — uses CMD in Dockerfile)_ | _(empty — uses CMD in Dockerfile)_ |
 | **Health Check Path** | `/api/health` | `/` |
 | **Health Check Timeout** | `300` | `300` |
 
-> **Critical:** Dockerfile Path is relative to Root Directory. If Root Directory is `backend`, set Dockerfile Path to `Dockerfile` — NOT `backend/Dockerfile`. Using `/backend/Dockerfile` with an empty Root Directory sets the build context to the repo root, where `package.json` doesn't exist, causing `COPY package.json` to fail.
+> **Why root-level Dockerfiles?** `Dockerfile.backend` and `Dockerfile.frontend` live at the repo root and use paths like `COPY backend/src ./src`. This means Railway can use the repo root as the Docker build context with no Root Directory setting required — eliminating the class of errors where Railway can't locate the Dockerfile or where `COPY package.json` fails because it can't find the file in the wrong context.
 
 ---
 
