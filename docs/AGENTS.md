@@ -151,18 +151,24 @@ Non-negotiable — violations block merge.
 
 ## 7. MCP Tool Inventory
 
+### Project-Specific MCPs
 No project-specific MCP servers are configured for this repo.
 
-Session-level MCPs (available but not project-specific):
+### Session-Level MCPs (available but not project-specific)
 
-| MCP | When to use |
-|---|---|
-| Gmail | Reading or sending email (out-of-band notifications, not in code) |
-| Google Calendar | Scheduling tasks or reading calendar state |
-| Google Drive | Reading/writing documents or specs stored on Drive |
-| Notion | Reading or updating project Notion pages |
+| MCP | When to use | Trigger Phrases |
+|---|---|---|
+| Filesystem MCP | Browse project files, read multiple files for context gathering | "buka file", "baca semua file di", "show me files in" |
+| PostgreSQL MCP | Query DB directly for debugging or data inspection | "query DB", "cek data di tabel", "how many leads" |
+| Gmail | Reading or sending email (out-of-band notifications, not in code) | "check email", "send email to", "any reply from" |
+| Google Calendar | Scheduling tasks or reading calendar state | "check my calendar", "schedule meeting" |
+| Google Drive | Reading/writing documents or specs stored on Drive | "open the Drive doc", "update spec on Drive" |
+| Notion | Reading or updating project Notion pages | "update Notion", "check action plan", "look at the Notion page" |
 
-**Trigger phrases:** "check my calendar", "send email to ...", "look at the Notion page", "open the Drive doc". Do not use these MCPs for code generation tasks.
+**Rules:**
+- Always use **least-privilege** when requesting MCP permissions. Request read-only access unless write is explicitly needed.
+- Do NOT use session MCPs for code generation tasks. They are for context and data retrieval only.
+- Document any new MCP added here before using it in a session.
 
 ---
 
@@ -179,6 +185,23 @@ _Filled progressively after sessions. Record what produced correct output and wh
 - ⚠️ "Improve this file" without scope → causes large rewrites. Always name the file and the specific problem.
 - ⚠️ "Add tests" without specifying which behavior to cover → produces coverage-padding tests rather than behavior tests.
 - ⚠️ Asking to "refactor and add feature" in the same prompt → mixing refactor and behavior change makes diffs hard to review. Split into two requests.
+
+---
+
+## 9. Skill Files
+
+Reusable prompt templates for common agentic workflows. Invoke the relevant skill file before starting the task by telling Claude Code: `"Read skills/[name].md, then proceed with the task."`
+
+| Skill | File | Use When |
+|---|---|---|
+| Create NestJS Module | `skills/nestjs-module.md` | Scaffolding any new feature module |
+| Drizzle Migration | `skills/drizzle-migration.md` | Any schema change or new table |
+| Code Review | `skills/code-review.md` | Reviewing a module, file, or PR diff |
+
+**Adding a new skill:**
+1. Create `skills/{name}.md`
+2. Add an entry to this table
+3. Include in the file: trigger phrases, pre-checklist, rules specific to this project, and expected output format
 
 ---
 
@@ -229,3 +252,48 @@ For every frontend task, `FRONTEND_DEVELOPMENT_PLAN.md` is the mandatory executi
 - Structured stdout/stderr logs with correlation IDs are primary. DB `error_logs` writes are best-effort supplemental.
 - Demo seed/reset commands are idempotent, environment-aware, transactional, and never reachable as public HTTP endpoints.
 - Demo credentials, slug, and core identity cannot be changed through the dashboard. Only seed code sets `users.is_demo`.
+
+
+## 10. Post-Implementation Workflow (Mandatory)
+
+After every implementation or fix, Claude MUST execute this sequence without being asked:
+
+### Step 1 — Test
+```bash
+# From the correct subdirectory (backend/ or frontend/)
+npm test
+npm run typecheck
+npm run lint
+```
+If any step fails: fix the failure first. Do not proceed to Step 2 until all checks pass.
+
+### Step 2 — Commit
+```bash
+git add -p          # stage only files changed in this task
+git status          # confirm staged files match the task scope
+git commit -m "[type]: [short description]"
+```
+Commit message format: `feat:`, `fix:`, `test:`, `chore:`, `refactor:` — never `misc:` or `update:`.
+Never stage unrelated files. Never commit with `git add .` without reading `git status` first.
+
+### Step 3 — Push & Open PR
+```bash
+git push origin HEAD
+```
+Then create a PR via GitHub CLI:
+```bash
+gh pr create \
+  --title "[type]: [description]" \
+  --body "$(cat .github/pull_request_template.md)" \
+  --base main \
+  --draft
+```
+Open as **draft** by default. Only mark ready when explicitly instructed.
+
+### Step 4 — Self-Review (Vibe Diff)
+Before finishing, Claude must read every file it changed and answer:
+- [ ] Any security issue introduced? (missing guard, client-supplied ownership, exposed secret)
+- [ ] Any architectural violation? (controller → repository, direct DB in service)
+- [ ] Does this match the task intent, not just the literal prompt?
+
+Report findings inline. If any checklist item is YES: fix before marking task complete.
