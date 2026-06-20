@@ -29,7 +29,7 @@ describe("chat session storage", () => {
       readStoredChatSession(
         slug,
         window.sessionStorage,
-        Date.parse("2026-06-16T08:00:00.000Z"),
+        Date.parse("2027-06-01T00:00:00.000Z"), // after chatSessionFixture.expiresAt (2027-01-01)
       ),
     ).toBeNull();
     expect(window.sessionStorage.length).toBe(0);
