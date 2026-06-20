@@ -10,7 +10,7 @@ function readCommand(value: string | undefined): DemoDataCommand {
 async function run(): Promise<void> {
   const command = readCommand(process.argv[2]);
   const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: false,
+    logger: ['error', 'warn'],
   });
   try {
     const result = await app.get(DemoDataService).execute(command);
