@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
         503,
       );
     }
+    console.error("[BFF /api/auth/login] unhandled error:", error);
     return errorResponse("Login belum dapat diproses. Silakan coba lagi.", 500);
   }
 }
