@@ -1,10 +1,28 @@
+jest.mock("next/headers", () => ({
+  cookies: jest.fn(),
+}));
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn().mockReturnValue({ push: jest.fn(), refresh: jest.fn() }),
+  usePathname: jest.fn().mockReturnValue("/"),
+  useSearchParams: jest.fn().mockReturnValue(new URLSearchParams()),
+}));
+
 import { render, screen } from "@testing-library/react";
+import { cookies } from "next/headers";
 
 import HomePage from "@/app/(marketing)/page";
 
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
+
 describe("public landing page", () => {
-  it("explains the product workflow and portfolio proof", () => {
-    render(<HomePage />);
+  beforeEach(() => {
+    jest.mocked(cookies).mockResolvedValue({
+      get: jest.fn().mockReturnValue(undefined),
+    } as unknown as CookieStore);
+  });
+
+  it("explains the product workflow and portfolio proof", async () => {
+    render(await HomePage());
 
     expect(
       screen.getByRole("heading", {
@@ -23,8 +41,8 @@ describe("public landing page", () => {
     ).toBeInTheDocument();
   });
 
-  it("provides demo, login, WhatsApp, and API documentation actions", () => {
-    render(<HomePage />);
+  it("provides demo, login, WhatsApp, and API documentation actions", async () => {
+    render(await HomePage());
 
     expect(
       screen.getAllByRole("link", { name: /coba demo chatbot/i })[0],
