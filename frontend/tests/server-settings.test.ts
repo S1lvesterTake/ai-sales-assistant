@@ -15,7 +15,6 @@ jest.mock("@/services/business-profile.service", () => ({
 
 import { cookies } from "next/headers";
 
-// eslint-disable-next-line import/order
 import { businessProfileService } from "@/services/business-profile.service";
 import {
   createBusinessProfile,

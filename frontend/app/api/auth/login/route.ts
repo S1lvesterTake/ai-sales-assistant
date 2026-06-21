@@ -73,17 +73,14 @@ export async function POST(request: NextRequest) {
     if (error instanceof ApiClientError && error.kind === "unauthorized") {
       return errorResponse("Email atau kata sandi salah.", 401);
     }
-    if (
-      error instanceof ApiClientError &&
-      (error.kind === "network" ||
-        error.kind === "timeout" ||
-        error.kind === "server")
-    ) {
+    if (error instanceof ApiClientError) {
+      console.error("[BFF login] ApiClientError kind=%s status=%d msg=%s", error.kind, error.status, error.message);
       return errorResponse(
         "Layanan login sedang tidak tersedia. Silakan coba lagi.",
         503,
       );
     }
+    console.error("[BFF login] unhandled error:", error);
     return errorResponse("Login belum dapat diproses. Silakan coba lagi.", 500);
   }
 }
