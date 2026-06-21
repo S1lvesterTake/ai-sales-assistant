@@ -75,6 +75,7 @@ export function BusinessProfileForm({
     resolver: zodResolver(schema as any),
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const slugValue = isExisting ? profile!.slug : (watch("slug") ?? "");
   const chatbotPath = `/chat/${slugValue}`;
 

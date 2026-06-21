@@ -55,7 +55,7 @@ export const updateProfileFormSchema = z
 
 // Union type that covers both form modes; slug is optional so the form state
 // is unified regardless of create vs update.
-const baseFormSchema = z.object({
+export const baseFormSchema = z.object({
   ...commonFields,
   slug: z.string().trim().max(100).optional(),
 });
