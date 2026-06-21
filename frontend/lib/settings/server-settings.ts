@@ -10,7 +10,6 @@ import { businessProfileService } from "@/services/business-profile.service";
 import type { BusinessProfile, BusinessProfileInput } from "@/types/business";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __aiSalesMockBusinessProfile: BusinessProfile | null | undefined;
 }
 
