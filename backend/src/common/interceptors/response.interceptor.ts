@@ -40,12 +40,14 @@ export class ResponseInterceptor<T> implements NestInterceptor<
         context.getClass(),
       ]) ?? 'Request completed successfully';
 
-    return next
-      .handle()
-      .pipe(
-        map((data) =>
-          isEnvelope(data) ? data : { success: true, message, data },
-        ),
-      );
+    return next.handle().pipe(
+      map((data) => {
+        if (isEnvelope(data)) {
+          const env = data as unknown as Record<string, unknown>;
+          return ('message' in env ? env : { ...env, message }) as unknown as T;
+        }
+        return { success: true, message, data };
+      }),
+    );
   }
 }
