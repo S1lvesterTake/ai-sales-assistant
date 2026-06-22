@@ -40,9 +40,11 @@ function fakeLead(overrides: Partial<LeadRecord> = {}): LeadRecord {
 function makeService({
   repoOverrides = {},
   ownerFound = true,
+  chatSessionFound = true,
 }: {
   repoOverrides?: Partial<{ [K in keyof LeadsRepository]: jest.Mock }>;
   ownerFound?: boolean;
+  chatSessionFound?: boolean;
 } = {}) {
   const repository = {
     create: jest.fn().mockResolvedValue(fakeLead()),
@@ -73,7 +75,9 @@ function makeService({
   } as unknown as jest.Mocked<ChatSessionAuthService>;
 
   const chatSessions = {
-    findByIdAndBusiness: jest.fn().mockResolvedValue({ id: 'session-1' }),
+    findByIdAndBusiness: jest
+      .fn()
+      .mockResolvedValue(chatSessionFound ? { id: 'session-1' } : null),
   } as unknown as jest.Mocked<ChatSessionsRepository>;
 
   return {
@@ -141,6 +145,14 @@ describe('LeadsService', () => {
       });
     });
 
+    it('throws 404 when caller has no business profile', async () => {
+      const { service } = makeService({ ownerFound: false });
+
+      await expect(service.get(USER_ID, LEAD_ID)).rejects.toMatchObject({
+        status: 404,
+      });
+    });
+
     it('scopes the lookup to the caller businessProfileId', async () => {
       const { service, repository } = makeService({
         repoOverrides: {
@@ -182,6 +194,16 @@ describe('LeadsService', () => {
           updateStatusByIdAndBusiness: jest.fn().mockResolvedValue(null),
         },
       });
+
+      await expect(
+        service.updateStatus(USER_ID, LEAD_ID, {
+          status: 'contacted',
+        } as unknown as UpdateLeadStatusDto),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('throws 404 when caller has no business profile', async () => {
+      const { service } = makeService({ ownerFound: false });
 
       await expect(
         service.updateStatus(USER_ID, LEAD_ID, {
@@ -344,6 +366,61 @@ describe('LeadsService', () => {
           name: 'Dewi',
         }),
       ).rejects.toMatchObject({ status: 401 });
+    });
+
+    it('re-throws non-unique-violation errors from createViaChatToken()', async () => {
+      const dbError = new Error('DB timeout');
+      const { service } = makeService({
+        repoOverrides: { create: jest.fn().mockRejectedValue(dbError) },
+      });
+
+      await expect(
+        service.createViaChatToken(SLUG, 'session-1', 'raw-token', {
+          phone: '6281234567890',
+          name: 'Dewi',
+        }),
+      ).rejects.toThrow(dbError);
+    });
+  });
+
+  describe('createViaJwt() with chatSessionId', () => {
+    it('links the lead to a resolved chat session', async () => {
+      const { repository, service } = makeService();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { create } = repository;
+
+      await service.createViaJwt(USER_ID, {
+        phone: '6281234567890',
+        name: 'Andi',
+        chatSessionId: 'session-1',
+      });
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ chatSessionId: 'session-1' }),
+      );
+    });
+
+    it('throws 404 when the referenced chat session does not exist', async () => {
+      const { service } = makeService({ chatSessionFound: false });
+
+      await expect(
+        service.createViaJwt(USER_ID, {
+          phone: '6281234567890',
+          name: 'Andi',
+          chatSessionId: 'missing-session',
+        }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('re-throws non-unique-violation errors from createViaJwt()', async () => {
+      const dbError = new Error('DB timeout');
+      const { service } = makeService({
+        repoOverrides: { create: jest.fn().mockRejectedValue(dbError) },
+      });
+
+      await expect(
+        service.createViaJwt(USER_ID, { phone: '6281234567890', name: 'Andi' }),
+      ).rejects.toThrow(dbError);
     });
   });
 });

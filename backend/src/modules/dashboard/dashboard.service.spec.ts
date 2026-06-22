@@ -178,6 +178,52 @@ describe('DashboardService', () => {
     });
   });
 
+  describe('getTopQuestions()', () => {
+    it('returns the top questions data array', async () => {
+      const repo = makeRepo({
+        getTopQuestions: jest
+          .fn()
+          .mockResolvedValue([{ question: 'Harga berapa?', count: 5 }]),
+      });
+      const service = new DashboardService(
+        repo,
+        makeOwnership(),
+        makeChatRepo(),
+      );
+
+      const result = await service.getTopQuestions(USER_ID);
+
+      expect(result.data).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(repo.getTopQuestions).toHaveBeenCalledWith(BIZ_ID, 5);
+    });
+
+    it('forwards an explicit limit to the repository', async () => {
+      const getTopQuestions = jest.fn().mockResolvedValue([]);
+      const repo = makeRepo({ getTopQuestions });
+      const service = new DashboardService(
+        repo,
+        makeOwnership(),
+        makeChatRepo(),
+      );
+
+      await service.getTopQuestions(USER_ID, 10);
+
+      expect(getTopQuestions).toHaveBeenCalledWith(BIZ_ID, 10);
+    });
+
+    it('throws NotFoundException when user has no business profile', async () => {
+      const service = new DashboardService(
+        makeRepo(),
+        makeOwnership(null),
+        makeChatRepo(),
+      );
+      await expect(service.getTopQuestions(USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('getConversationMessages()', () => {
     it('throws NotFoundException when session belongs to another business', async () => {
       const service = new DashboardService(
