@@ -297,3 +297,18 @@ Before finishing, Claude must read every file it changed and answer:
 - [ ] Does this match the task intent, not just the literal prompt?
 
 Report findings inline. If any checklist item is YES: fix before marking task complete.
+
+
+## 11. Feature Implementation Order (Mandatory)
+
+When implementing any new feature, always follow this exact sequence:
+
+1. Read the feature spec in docs/
+2. Read the relevant schema files in database/schema/
+3. Read one existing module as pattern reference (products/ for CRUD)
+4. Implement: repository → DTOs → service → controller → module
+5. Write tests alongside each file (not after)
+6. Run: typecheck → test → test:cov → lint
+7. Follow Post-Implementation Workflow (Section 10)
+
+Never skip steps. Never implement controller before repository.
