@@ -20,6 +20,7 @@
     "test:coverage": "jest --coverage --runInBand",
     "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:cov": "jest --coverage --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -98,6 +99,14 @@
       "<rootDir>/../test/setup-env.cjs"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "statements": 20,
+        "branches": 20,
+        "functions": 20,
+        "lines": 20
+      }
+    },
     "testEnvironment": "node"
   },
   "overrides": {
