@@ -133,9 +133,8 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
 
       - name: Run unit tests with coverage
-        # Threshold set to current baseline (10.78%). Raise this as test coverage grows.
-        run: |
-          npm run test -- --coverage --coverageThreshold='{"global":{"lines":10}}'
+        # Threshold is set in package.json jest.coverageThreshold (currently 20%). Raise it as coverage grows.
+        run: npm run test:cov
 
       - name: Upload coverage report
         if: always()
