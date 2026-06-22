@@ -56,7 +56,7 @@ function makeService(
     service: new WhatsappService(
       repository,
       chatAuth,
-      null as unknown as DatabaseService, // not used; slug utils are mocked
+      {} as unknown as DatabaseService, // not used; slug utils are mocked
     ),
   };
 }
@@ -79,7 +79,7 @@ describe('WhatsappService', () => {
       const result = await service.generateLink(SLUG);
 
       expect(mockResolveWithWhatsapp).toHaveBeenCalledWith(
-        null, // DatabaseService is mocked away
+        expect.anything(),
         SLUG,
       );
       expect(result.url).toContain(`wa.me/${WA_NUMBER}`);
@@ -95,11 +95,11 @@ describe('WhatsappService', () => {
 
     it('passes through the chat auth check when sessionId + rawToken are both provided', async () => {
       const { chatAuth, service } = makeService();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { authorize } = chatAuth;
 
       await service.generateLink(SLUG, 'session-123', undefined, 'raw-token');
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const { authorize } = chatAuth;
       expect(authorize).toHaveBeenCalledWith(
         'session-123',
         BIZ_ID,
@@ -111,11 +111,11 @@ describe('WhatsappService', () => {
   describe('trackClick()', () => {
     it('creates a click event scoped to the resolved businessProfileId', async () => {
       const { repository, service } = makeService();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { createClick } = repository;
 
       await service.trackClick(SLUG);
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const { createClick } = repository;
       expect(createClick).toHaveBeenCalledWith(
         expect.objectContaining({ businessProfileId: BIZ_ID }),
       );

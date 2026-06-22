@@ -237,7 +237,7 @@ describe('ProductsService', () => {
     });
   });
 
-  describe('UpdateProductDto — name validation (confirmed bug fix)', () => {
+  describe('UpdateProductDto — name validation', () => {
     it('rejects an empty name string', async () => {
       const dto = plainToInstance(UpdateProductDto, { name: '' });
       const errors = await validate(dto);

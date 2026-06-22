@@ -6,9 +6,20 @@ import type { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { LeadRecord, LeadsRepository } from './leads.repository';
 import { LeadsService } from './leads.service';
 
+jest.mock('../../common/utils/slug', () => ({
+  resolveBusinessBySlug: jest.fn(),
+}));
+
+import { resolveBusinessBySlug } from '../../common/utils/slug';
+
+const mockResolveBySlug = resolveBusinessBySlug as jest.MockedFunction<
+  typeof resolveBusinessBySlug
+>;
+
 const BIZ_ID = '019b9d80-0000-0000-0000-000000000001';
 const USER_ID = '019b9d80-0000-0000-0000-000000000099';
 const LEAD_ID = '019b9d80-0000-0000-0000-000000000010';
+const SLUG = 'warung-pak-budi';
 
 function fakeLead(overrides: Partial<LeadRecord> = {}): LeadRecord {
   return {
@@ -129,6 +140,21 @@ describe('LeadsService', () => {
         status: 404,
       });
     });
+
+    it('scopes the lookup to the caller businessProfileId', async () => {
+      const { service, repository } = makeService({
+        repoOverrides: {
+          findByIdAndBusiness: jest.fn().mockResolvedValue(null),
+        },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { findByIdAndBusiness } = repository;
+      await expect(service.get(USER_ID, LEAD_ID)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(findByIdAndBusiness).toHaveBeenCalledWith(LEAD_ID, BIZ_ID);
+    });
   });
 
   describe('updateStatus()', () => {
@@ -198,14 +224,14 @@ describe('LeadsService', () => {
       });
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      const { create: create2 } = repository;
+      const { create } = repository;
 
       await service.createViaJwt(USER_ID, {
         phone: '+6281234567890',
         name: 'Siti',
       });
 
-      expect(create2).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ phone: '6281234567890' }),
       );
     });
@@ -214,14 +240,14 @@ describe('LeadsService', () => {
       const { repository, service } = makeService();
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
-      const { create: create3 } = repository;
+      const { create } = repository;
 
       await service.createViaJwt(USER_ID, {
         phone: '6281234567890',
         name: 'Andi',
       });
 
-      expect(create3).toHaveBeenCalledWith(
+      expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ businessProfileId: BIZ_ID }),
       );
     });
@@ -252,6 +278,72 @@ describe('LeadsService', () => {
       await expect(
         service.createViaJwt(USER_ID, { phone: '6281234567890' }),
       ).rejects.toMatchObject({ status: 404 });
+    });
+  });
+
+  describe('createViaChatToken()', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockResolveBySlug.mockResolvedValue({ id: BIZ_ID, slug: SLUG });
+    });
+
+    it('creates a lead with source chatbot scoped to the resolved businessProfileId', async () => {
+      const { repository, chatAuth, service } = makeService();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { create } = repository;
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { authorize } = chatAuth;
+
+      await service.createViaChatToken(SLUG, 'session-1', 'raw-token', {
+        phone: '6281234567890',
+        name: 'Dewi',
+      });
+
+      expect(authorize).toHaveBeenCalledWith('session-1', BIZ_ID, 'raw-token');
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          businessProfileId: BIZ_ID,
+          chatSessionId: 'session-1',
+          source: 'chatbot',
+        }),
+      );
+    });
+
+    it('throws 409 when a lead with the same phone already exists', async () => {
+      const { service } = makeService({
+        repoOverrides: {
+          create: jest.fn().mockRejectedValue({ cause: { code: '23505' } }),
+        },
+      });
+
+      await expect(
+        service.createViaChatToken(SLUG, 'session-1', 'raw-token', {
+          phone: '6281234567890',
+          name: 'Dewi',
+        }),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+
+    it('throws 422 for a phone number that is not a valid Indonesian format', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.createViaChatToken(SLUG, 'session-1', 'raw-token', {
+          phone: '123456789',
+          name: 'Dewi',
+        }),
+      ).rejects.toMatchObject({ status: 422 });
+    });
+
+    it('throws 401 when rawToken is missing', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.createViaChatToken(SLUG, 'session-1', '', {
+          phone: '6281234567890',
+          name: 'Dewi',
+        }),
+      ).rejects.toMatchObject({ status: 401 });
     });
   });
 });
