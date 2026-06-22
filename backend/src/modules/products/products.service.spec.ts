@@ -211,6 +211,34 @@ describe('ProductsService', () => {
         service.update(USER_ID, PRODUCT_ID, { price: 10_000 }),
       ).rejects.toMatchObject({ status: 404 });
     });
+
+    it('passes all optional nullable fields through nullableText', async () => {
+      const { repository, service } = makeService({
+        repoOverrides: {
+          updateByIdAndBusiness: jest.fn().mockResolvedValue(fakeProduct()),
+        },
+      });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const { updateByIdAndBusiness } = repository;
+
+      await service.update(USER_ID, PRODUCT_ID, {
+        description: 'Desc',
+        category: 'Minuman',
+        orderingInstruction: 'Order via WA',
+        additionalNotes: 'Tersedia setiap hari',
+      });
+
+      expect(updateByIdAndBusiness).toHaveBeenCalledWith(
+        PRODUCT_ID,
+        BIZ_ID,
+        expect.objectContaining({
+          description: 'Desc',
+          category: 'Minuman',
+          orderingInstruction: 'Order via WA',
+          additionalNotes: 'Tersedia setiap hari',
+        }),
+      );
+    });
   });
 
   describe('remove()', () => {

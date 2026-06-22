@@ -7,6 +7,13 @@ export class DashboardSummaryDto {
   @ApiProperty({ example: 12 })
   newLeads!: number;
 
+  @ApiProperty({
+    example: 28.6,
+    description:
+      'Percentage of leads with status contacted / total leads, one decimal place',
+  })
+  conversionRate!: number;
+
   @ApiProperty({ example: 156 })
   totalChatSessions!: number;
 

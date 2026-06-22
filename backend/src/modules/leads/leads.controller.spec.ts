@@ -74,4 +74,22 @@ describe('LeadsController', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(service.updateStatus).toHaveBeenCalledWith(USER_ID, LEAD_ID, input);
   });
+
+  it('list() delegates to service.list with userId and query', async () => {
+    const { controller, service } = makeController();
+
+    await controller.list(principal, {});
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(service.list).toHaveBeenCalledWith(USER_ID, {});
+  });
+
+  it('get() delegates to service.get with userId and leadId', async () => {
+    const { controller, service } = makeController();
+
+    await controller.get(principal, LEAD_ID);
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(service.get).toHaveBeenCalledWith(USER_ID, LEAD_ID);
+  });
 });

@@ -24,4 +24,14 @@ describe('HealthController', () => {
       new HealthController(database).getHealth(),
     ).resolves.toMatchObject({ status: 'degraded', database: 'down' });
   });
+
+  it('reports degraded when ping returns false', async () => {
+    const database = {
+      ping: jest.fn().mockResolvedValue(false),
+    } as unknown as DatabaseService;
+
+    await expect(
+      new HealthController(database).getHealth(),
+    ).resolves.toMatchObject({ status: 'degraded', database: 'down' });
+  });
 });

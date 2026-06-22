@@ -101,4 +101,81 @@ describe('AuthService', () => {
       expect(JSON.stringify(error)).toContain('INVALID_CREDENTIALS');
     }
   });
+
+  it('returns a session when login credentials are valid', async () => {
+    const storedUser = {
+      ...publicUser,
+      passwordHash: await bcrypt.hash('Password123', 1),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const { service } = createService({
+      findByEmail: jest.fn().mockResolvedValue(storedUser),
+    });
+
+    const session = await service.login({
+      email: publicUser.email,
+      password: 'Password123',
+    });
+
+    expect(session).toMatchObject({
+      accessToken: 'signed-token',
+      user: publicUser,
+    });
+  });
+
+  it('returns the same 401 when user exists but password is wrong', async () => {
+    const storedUser = {
+      ...publicUser,
+      passwordHash: await bcrypt.hash('correct-password', 1),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const { service } = createService({
+      findByEmail: jest.fn().mockResolvedValue(storedUser),
+    });
+
+    await expect(
+      service.login({ email: publicUser.email, password: 'wrong-password' }),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('getCurrentUser delegates to repository.findPublicById', async () => {
+    const { repository, service } = createService();
+
+    const result = await service.getCurrentUser(publicUser.id);
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.findPublicById).toHaveBeenCalledWith(publicUser.id);
+    expect(result).toEqual(publicUser);
+  });
+
+  it('re-throws non-unique-violation errors from register()', async () => {
+    const dbError = new Error('Connection lost');
+    const { service } = createService({
+      create: jest.fn().mockRejectedValue(dbError),
+    });
+
+    await expect(
+      service.register({
+        name: 'Budi',
+        email: 'new@example.com',
+        password: 'Password123',
+      }),
+    ).rejects.toThrow(dbError);
+  });
+
+  it('throws 409 when a duplicate email key violation occurs inside create()', async () => {
+    const { service } = createService({
+      create: jest.fn().mockRejectedValue({ cause: { code: '23505' } }),
+    });
+
+    await expect(
+      service.register({
+        name: 'Budi',
+        email: 'new@example.com',
+        password: 'Password123',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
 });
