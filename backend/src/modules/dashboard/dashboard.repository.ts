@@ -14,6 +14,7 @@ const MAX_WIDGET_LIMIT = 20;
 export interface SummaryRow {
   totalLeads: number;
   newLeads: number;
+  conversionRate: number;
   totalChatSessions: number;
   whatsappClicks: number;
 }
@@ -43,30 +44,53 @@ export class DashboardRepository {
   constructor(private readonly database: DatabaseService) {}
 
   async getSummary(businessProfileId: string): Promise<SummaryRow> {
-    const [totalLeads, newLeads, totalChatSessions, whatsappClicks] =
-      await Promise.all([
-        this.database.db.$count(
-          leads,
+    const [
+      totalLeads,
+      newLeads,
+      contactedLeads,
+      totalChatSessions,
+      whatsappClicks,
+    ] = await Promise.all([
+      this.database.db.$count(
+        leads,
+        eq(leads.businessProfileId, businessProfileId),
+      ),
+      this.database.db.$count(
+        leads,
+        and(
           eq(leads.businessProfileId, businessProfileId),
+          eq(leads.status, 'new'),
         ),
-        this.database.db.$count(
-          leads,
-          and(
-            eq(leads.businessProfileId, businessProfileId),
-            eq(leads.status, 'new'),
-          ),
+      ),
+      this.database.db.$count(
+        leads,
+        and(
+          eq(leads.businessProfileId, businessProfileId),
+          eq(leads.status, 'contacted'),
         ),
-        this.database.db.$count(
-          chatSessions,
-          eq(chatSessions.businessProfileId, businessProfileId),
-        ),
-        this.database.db.$count(
-          whatsappClickEvents,
-          eq(whatsappClickEvents.businessProfileId, businessProfileId),
-        ),
-      ]);
+      ),
+      this.database.db.$count(
+        chatSessions,
+        eq(chatSessions.businessProfileId, businessProfileId),
+      ),
+      this.database.db.$count(
+        whatsappClickEvents,
+        eq(whatsappClickEvents.businessProfileId, businessProfileId),
+      ),
+    ]);
 
-    return { totalLeads, newLeads, totalChatSessions, whatsappClicks };
+    const conversionRate =
+      totalLeads > 0
+        ? Math.round((contactedLeads / totalLeads) * 1000) / 10
+        : 0;
+
+    return {
+      totalLeads,
+      newLeads,
+      conversionRate,
+      totalChatSessions,
+      whatsappClicks,
+    };
   }
 
   async getRecentLeads(
@@ -95,45 +119,51 @@ export class DashboardRepository {
   ): Promise<RecentConversationRow[]> {
     const clamped = Math.min(limit, MAX_WIDGET_LIMIT);
 
-    // Get sessions with their latest customer message
-    const sessions = await this.database.db
+    // Single query: LEFT JOIN sessions with customer messages, ROW_NUMBER picks
+    // the latest message per session so sessions with no messages also appear.
+    const ranked = this.database.db
       .select({
-        id: chatSessions.id,
+        sessionId: chatSessions.id,
         customerName: chatSessions.customerName,
-        createdAt: chatSessions.createdAt,
+        sessionCreatedAt: chatSessions.createdAt,
+        lastMessage: chatMessages.message,
+        lastMessageAt: chatMessages.createdAt,
+        rn: sql<number>`ROW_NUMBER() OVER (
+          PARTITION BY ${chatSessions.id}
+          ORDER BY ${chatMessages.createdAt} DESC NULLS LAST,
+                   ${chatMessages.id} DESC NULLS LAST
+        )`.as('rn'),
       })
       .from(chatSessions)
+      .leftJoin(
+        chatMessages,
+        and(
+          eq(chatMessages.chatSessionId, chatSessions.id),
+          eq(chatMessages.role, 'customer'),
+        ),
+      )
       .where(eq(chatSessions.businessProfileId, businessProfileId))
-      .orderBy(desc(chatSessions.createdAt), desc(chatSessions.id))
+      .as('ranked');
+
+    const rows = await this.database.db
+      .select({
+        sessionId: ranked.sessionId,
+        customerName: ranked.customerName,
+        sessionCreatedAt: ranked.sessionCreatedAt,
+        lastMessage: ranked.lastMessage,
+        lastMessageAt: ranked.lastMessageAt,
+      })
+      .from(ranked)
+      .where(eq(ranked.rn, 1))
+      .orderBy(desc(ranked.sessionCreatedAt), desc(ranked.sessionId))
       .limit(clamped);
 
-    const results: RecentConversationRow[] = [];
-
-    for (const session of sessions) {
-      const [lastMsg] = await this.database.db
-        .select({
-          message: chatMessages.message,
-          createdAt: chatMessages.createdAt,
-        })
-        .from(chatMessages)
-        .where(
-          and(
-            eq(chatMessages.chatSessionId, session.id),
-            eq(chatMessages.role, 'customer'),
-          ),
-        )
-        .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
-        .limit(1);
-
-      results.push({
-        sessionId: session.id,
-        customerName: session.customerName,
-        lastMessage: lastMsg?.message ?? '',
-        lastMessageAt: lastMsg?.createdAt ?? session.createdAt ?? new Date(),
-      });
-    }
-
-    return results;
+    return rows.map((row) => ({
+      sessionId: row.sessionId,
+      customerName: row.customerName,
+      lastMessage: row.lastMessage ?? '',
+      lastMessageAt: row.lastMessageAt ?? row.sessionCreatedAt,
+    }));
   }
 
   async getTopQuestions(
