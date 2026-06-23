@@ -81,6 +81,12 @@ Hard rules — no exceptions without explicit instruction.
 ❌ `const key = process.env.OPENAI_API_KEY`
 ✅ Inject `ConfigService` and call `this.config.getOrThrow<string>('OPENAI_API_KEY')`
 
+### Drizzle subquery with unaliased columns from joined tables
+❌ `db.select({ sessionCreatedAt: chatSessions.createdAt, lastMessageAt: chatMessages.createdAt }).from(...).leftJoin(...).as('ranked')`
+✅ `db.select({ sessionCreatedAt: sql<Date>\`${chatSessions.createdAt}\`.as('session_created_at'), lastMessageAt: sql<Date>\`${chatMessages.createdAt}\`.as('last_message_at') }).from(...).leftJoin(...).as('ranked')`
+
+Drizzle emits the raw DB column name (`created_at`, `id`, `updated_at`) in the subquery SELECT regardless of the TypeScript alias. When two joined tables share a column name the outer query hits an ambiguous or duplicate reference at runtime — a silent footgun caught only by an integration test or in production. Columns that commonly collide across this schema: `id`, `created_at`, `updated_at`, `business_profile_id`. Rule: in any `.select({})` that chains into `.as('subquery-name')`, wrap every column selected from a joined table in `sql<T>\`${table.column}\`.as('unique_alias')`.
+
 ---
 
 ## 4. Code Style Rules

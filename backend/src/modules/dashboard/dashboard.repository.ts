@@ -125,9 +125,17 @@ export class DashboardRepository {
       .select({
         sessionId: chatSessions.id,
         customerName: chatSessions.customerName,
-        sessionCreatedAt: chatSessions.createdAt,
+        // Explicit SQL-level aliases are required here. Drizzle does not emit AS
+        // aliases for schema column references inside subqueries, so both
+        // chatSessions.createdAt and chatMessages.createdAt would become the bare
+        // column name "created_at", making the outer ORDER BY ambiguous at runtime.
+        sessionCreatedAt: sql<Date>`${chatSessions.createdAt}`.as(
+          'session_created_at',
+        ),
         lastMessage: chatMessages.message,
-        lastMessageAt: chatMessages.createdAt,
+        lastMessageAt: sql<Date>`${chatMessages.createdAt}`.as(
+          'last_message_at',
+        ),
         rn: sql<number>`ROW_NUMBER() OVER (
           PARTITION BY ${chatSessions.id}
           ORDER BY ${chatMessages.createdAt} DESC NULLS LAST,

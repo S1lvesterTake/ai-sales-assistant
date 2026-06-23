@@ -83,6 +83,43 @@ export const features = pgTable('features', {
 
 ---
 
+## Query Pitfalls
+
+### Subquery column name collision (Drizzle footgun)
+
+**Symptom:** `Failed query` at runtime — an ambiguous or duplicate column reference in the outer SELECT, even though TypeScript aliases are distinct.
+
+**Cause:** Drizzle does not emit SQL-level `AS` aliases for schema column references inside a subquery. Both `chatSessions.createdAt` and `chatMessages.createdAt` map to the raw column name `"created_at"` in the generated SQL, so the outer query's `ORDER BY "ranked"."created_at"` becomes ambiguous and the query fails.
+
+**Rule:** In any `.select({})` that is part of a subquery (chains into `.as('name')`), every column selected from a **joined** table must be wrapped in an explicit sql alias:
+
+```typescript
+// ❌ Both become "created_at" in the generated SQL — outer query fails at runtime
+const ranked = db.select({
+  sessionCreatedAt: chatSessions.createdAt,
+  lastMessageAt:    chatMessages.createdAt,
+}).from(chatSessions).leftJoin(...).as('ranked');
+
+// ✅ Force SQL-level AS aliases so each column is unambiguous
+const ranked = db.select({
+  sessionCreatedAt: sql<Date>`${chatSessions.createdAt}`.as('session_created_at'),
+  lastMessageAt:    sql<Date>`${chatMessages.createdAt}`.as('last_message_at'),
+}).from(chatSessions).leftJoin(...).as('ranked');
+```
+
+**High-risk column names** (present in multiple tables — always alias these in subqueries):
+
+| Column | Tables it appears in |
+|---|---|
+| `id` | every table |
+| `created_at` | every table |
+| `updated_at` | most tables |
+| `business_profile_id` | sessions, leads, faqs, products, whatsapp |
+
+**Prevention:** Write a SQL generation test that calls `.toSQL()` on the inner builder (before `.as()`) and asserts the expected aliases are present. This runs in CI without a real database connection — see `backend/src/modules/dashboard/dashboard.repository.sql.spec.ts` as the reference.
+
+---
+
 ## Migration Workflow
 
 ```bash
