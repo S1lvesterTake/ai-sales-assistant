@@ -83,6 +83,88 @@ export const features = pgTable('features', {
 
 ---
 
+## Query Pitfalls
+
+### Subquery column name collision (Drizzle footgun)
+
+**Symptom:** `Failed query` at runtime — an ambiguous or duplicate column reference in the outer SELECT, even though TypeScript aliases are distinct.
+
+**Cause:** Drizzle does not emit SQL-level `AS` aliases for schema column references inside a subquery. Both `chatSessions.createdAt` and `chatMessages.createdAt` map to the raw column name `"created_at"` in the generated SQL, so the outer query's `ORDER BY "ranked"."created_at"` becomes ambiguous and the query fails.
+
+**Three rules apply to every `.select({})` that chains into `.as('name')`:**
+
+1. **Alias every column from every table** — not only the "joined" table. A bare `sessionId: chatSessions.id` on the primary table is equally vulnerable to collision if `chatMessages.id` is ever added to the same select.
+2. **Use `sql<T | null>` for LEFT JOIN columns** — `sql<Date>` erases Drizzle's nullability inference. Any column on the nullable side of a LEFT JOIN must be typed `sql<Date | null>`, otherwise the `??` fallback that protects against NULL at runtime is no longer type-enforced and can be safely removed by future refactors — incorrectly.
+3. **Alias names must be unique across the whole inner SELECT** — not just per-table.
+
+```typescript
+// ❌ Both become "created_at" in SQL — outer query fails at runtime
+const ranked = db.select({
+  sessionCreatedAt: chatSessions.createdAt,
+  lastMessageAt:    chatMessages.createdAt,
+}).from(chatSessions).leftJoin(...).as('ranked');
+
+// ✅ Explicit SQL aliases + correct nullability for the LEFT JOIN side
+const ranked = db.select({
+  sessionId:        sql<string>`${chatSessions.id}`.as('session_id'),
+  sessionCreatedAt: sql<Date>`${chatSessions.createdAt}`.as('session_created_at'),
+  lastMessage:      sql<string | null>`${chatMessages.message}`.as('last_message'),
+  lastMessageAt:    sql<Date | null>`${chatMessages.createdAt}`.as('last_message_at'),
+}).from(chatSessions).leftJoin(...).as('ranked');
+//                    ^^^^^^^^^^^ LEFT JOIN → nullable → use sql<T | null>
+```
+
+**High-risk column names** (present in multiple tables — always alias these in subqueries):
+
+| Column | Tables it appears in |
+|---|---|
+| `id` | every table |
+| `created_at` | every table |
+| `updated_at` | most tables |
+| `business_profile_id` | sessions, leads, faqs, products, whatsapp |
+
+**Prevention — SQL generation test pattern:**
+
+Add the test inside the **existing** `*.spec.ts` for the same module (do not create a new file — AGENTS.md §5). Store the Pool separately so teardown can close it cleanly:
+
+```typescript
+// Inside dashboard.repository.spec.ts — new describe block
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from '../../database/schema';
+
+describe('SQL generation', () => {
+  const pool = new Pool();
+  const db = drizzle(pool, { schema });
+
+  afterAll(async () => { await pool.end(); });
+
+  it('getRecentConversations subquery has no duplicate column names', () => {
+    const builder = db.select({ /* mirror the production select */ })
+      .from(schema.chatSessions)
+      .leftJoin(/* same join condition as production */);
+
+    const { sql: generatedSql } = builder.toSQL();
+
+    // Assert absence of ALL duplicates — not just the known ones
+    const colNames = generatedSql
+      .slice(7, generatedSql.indexOf(' from '))
+      .split(/,(?![^(]*\))/)
+      .map((p) => {
+        const m = p.match(/as "([^"]+)"/i) ?? p.match(/"([^"]+)"$/);
+        return m?.[1] ?? p.trim();
+      });
+    const seen = new Set<string>();
+    const dupes = colNames.filter((c) => seen.size === seen.add(c).size);
+    expect(dupes).toEqual([]);
+  });
+});
+```
+
+Note: this test documents the SQL shape — it does **not** guard against regressions in the production method (which may change its query independently). Treat it as a schema-level contract, not a behaviour test.
+
+---
+
 ## Migration Workflow
 
 ```bash

@@ -81,6 +81,20 @@ Hard rules — no exceptions without explicit instruction.
 ❌ `const key = process.env.OPENAI_API_KEY`
 ✅ Inject `ConfigService` and call `this.config.getOrThrow<string>('OPENAI_API_KEY')`
 
+### Drizzle subquery with unaliased or wrongly-typed columns
+❌ `db.select({ sessionCreatedAt: chatSessions.createdAt, lastMessageAt: chatMessages.createdAt }).from(...).leftJoin(...).as('ranked')`
+✅ `db.select({ sessionCreatedAt: sql<Date>\`${chatSessions.createdAt}\`.as('session_created_at'), lastMessageAt: sql<Date | null>\`${chatMessages.createdAt}\`.as('last_message_at') }).from(...).leftJoin(...).as('ranked')`
+
+Drizzle emits the raw DB column name (`created_at`, `id`, `updated_at`) in the subquery SELECT regardless of the TypeScript alias. When any two selected columns share a DB column name the outer query hits an ambiguous reference at runtime — a silent footgun caught only by an integration test or in production.
+
+Three rules apply whenever you write a `.select({})` that chains into `.as('subquery-name')`:
+
+1. **Alias every column from every table** — not only "joined" table columns. A bare `sessionId: chatSessions.id` on the primary table is equally vulnerable if `chatMessages.id` is ever added to the same select.
+2. **Use `sql<T | null>` for LEFT JOIN columns** — `sql<Date>` erases Drizzle's nullability inference. Any column on the nullable side of a LEFT JOIN must be typed `sql<Date | null>` so the `??` fallback remains type-enforced. Omitting `| null` silently removes the compile-time guard.
+3. **Alias names must be unique across the whole inner SELECT** — not just unique per table.
+
+Columns that commonly collide across this schema: `id`, `created_at`, `updated_at`, `business_profile_id`.
+
 ---
 
 ## 4. Code Style Rules
