@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { StructuredLogger } from '../logging/structured-logger.service';
+import { Logger } from 'nestjs-pino';
 import { RequestLoggingMiddleware } from './request-logging.middleware';
 
 function makeReq(overrides: Partial<Request> = {}): Request {
@@ -30,7 +30,7 @@ function makeRes(): { res: Response; emitFinish: () => void } {
 
 describe('RequestLoggingMiddleware', () => {
   it('registers a finish listener and calls next()', () => {
-    const logger = { log: jest.fn() } as unknown as StructuredLogger;
+    const logger = { log: jest.fn() } as unknown as Logger;
     const middleware = new RequestLoggingMiddleware(logger);
     const req = makeReq();
     const { res } = makeRes();
@@ -44,7 +44,7 @@ describe('RequestLoggingMiddleware', () => {
   });
 
   it('logs the request details when the response finishes', () => {
-    const logger = { log: jest.fn() } as unknown as StructuredLogger;
+    const logger = { log: jest.fn() } as unknown as Logger;
     const middleware = new RequestLoggingMiddleware(logger);
     const req = makeReq();
     const { res, emitFinish } = makeRes();

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiFieldErrorDto } from '../dto/api-field-error.dto';
-import { StructuredLogger } from '../logging/structured-logger.service';
+import { Logger } from 'nestjs-pino';
 import { ErrorLogService } from '../../modules/error-log/error-log.service';
 
 interface ExceptionBody {
@@ -53,7 +53,7 @@ function safeMessage(status: number, body: ExceptionBody): string {
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   constructor(
-    private readonly logger: StructuredLogger,
+    private readonly logger: Logger,
     private readonly errorLogService: ErrorLogService,
   ) {}
 

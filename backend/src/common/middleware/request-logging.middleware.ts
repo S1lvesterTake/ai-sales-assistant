@@ -1,10 +1,10 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
-import { StructuredLogger } from '../logging/structured-logger.service';
+import { Logger } from 'nestjs-pino';
 
 @Injectable()
 export class RequestLoggingMiddleware implements NestMiddleware {
-  constructor(private readonly logger: StructuredLogger) {}
+  constructor(private readonly logger: Logger) {}
 
   use(request: Request, response: Response, next: NextFunction): void {
     response.on('finish', () => {

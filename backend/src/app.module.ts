@@ -1,10 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import type { IncomingMessage } from 'node:http';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { StructuredLogger } from './common/logging/structured-logger.service';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { validateEnvironment } from './config/environment.validation';
 import { DatabaseModule } from './database/database.module';
@@ -21,12 +23,44 @@ import { OwnershipModule } from './common/ownership/ownership.module';
 import { ProductsModule } from './modules/products/products.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
+const correlationIdPattern = /^[A-Za-z0-9._:-]{1,128}$/;
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       cache: true,
       isGlobal: true,
       validate: validateEnvironment,
+    }),
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const isPinoPretty = config.get<string>('PINO_PRETTY') === 'true';
+        return {
+          pinoHttp: {
+            autoLogging: false,
+            genReqId: (req: IncomingMessage) => {
+              const r = req as IncomingMessage & { correlationId?: string };
+              if (r.correlationId) return r.correlationId;
+              const h = req.headers['x-correlation-id'];
+              const raw = Array.isArray(h) ? h[0] : h;
+              return raw && correlationIdPattern.test(raw) ? raw : randomUUID();
+            },
+            level:
+              config.get<string>('NODE_ENV') === 'production'
+                ? 'info'
+                : 'debug',
+            ...(isPinoPretty
+              ? {
+                  transport: {
+                    target: 'pino-pretty',
+                    options: { singleLine: true },
+                  },
+                }
+              : {}),
+          },
+        };
+      },
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
@@ -51,13 +85,12 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     HealthModule,
   ],
   providers: [
-    StructuredLogger,
     ErrorLogService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
-  exports: [StructuredLogger, ErrorLogService],
+  exports: [ErrorLogService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

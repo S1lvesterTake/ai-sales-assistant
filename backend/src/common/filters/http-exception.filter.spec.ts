@@ -1,7 +1,7 @@
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ErrorLogService } from '../../modules/error-log/error-log.service';
-import { StructuredLogger } from '../logging/structured-logger.service';
+import { Logger } from 'nestjs-pino';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 function makeHost(reqOverrides: Partial<Request> = {}) {
@@ -29,7 +29,7 @@ function makeHost(reqOverrides: Partial<Request> = {}) {
 function makeFilter() {
   const logger = {
     error: jest.fn(),
-  } as unknown as StructuredLogger;
+  } as unknown as Logger;
 
   const errorLogService = {
     capture: jest.fn().mockResolvedValue(undefined),
