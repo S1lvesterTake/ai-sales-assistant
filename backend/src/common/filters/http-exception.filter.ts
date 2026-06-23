@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 import { ApiFieldErrorDto } from '../dto/api-field-error.dto';
 import { Logger } from 'nestjs-pino';
 import { ErrorLogService } from '../../modules/error-log/error-log.service';
@@ -76,6 +77,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ...(body.errors ? { errors: body.errors } : {}),
     };
     const requestStartedAt = request.requestStartedAt ?? Date.now();
+
+    if (status >= 500) {
+      Sentry.captureException(exception, {
+        extra: {
+          correlationId: request.correlationId ?? 'unknown',
+          method: request.method,
+          path: request.path,
+          statusCode: status,
+        },
+      });
+    }
 
     this.logger.error(
       {

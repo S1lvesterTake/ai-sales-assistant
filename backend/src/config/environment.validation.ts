@@ -133,5 +133,9 @@ export function validateEnvironment(
       'RATE_LIMIT_TTL_MS',
       60_000,
     ),
+    SENTRY_DSN:
+      typeof environment.SENTRY_DSN === 'string'
+        ? environment.SENTRY_DSN
+        : undefined,
   };
 }

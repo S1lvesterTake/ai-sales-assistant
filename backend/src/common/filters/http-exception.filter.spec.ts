@@ -1,5 +1,8 @@
+jest.mock('@sentry/nestjs', () => ({ captureException: jest.fn() }));
+
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 import { ErrorLogService } from '../../modules/error-log/error-log.service';
 import { Logger } from 'nestjs-pino';
 import { HttpExceptionFilter } from './http-exception.filter';
@@ -39,6 +42,10 @@ function makeFilter() {
 }
 
 describe('HttpExceptionFilter', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('handles a 404 HttpException with correct status, success=false, and code=NOT_FOUND', () => {
     const filter = makeFilter();
     const { host, status, json } = makeHost();
@@ -132,5 +139,65 @@ describe('HttpExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Too many requests' }),
     );
+  });
+
+  describe('Sentry capture', () => {
+    it('calls captureException for a 500 error with correct extra context', () => {
+      const filter = makeFilter();
+      const { host } = makeHost();
+      const exception = new Error('Unhandled crash');
+
+      filter.catch(exception, host);
+
+      expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureException).toHaveBeenCalledWith(
+        exception,
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          extra: expect.objectContaining({
+            correlationId: 'abc-123',
+            method: 'GET',
+            path: '/test',
+            statusCode: 500,
+          }),
+        }),
+      );
+    });
+
+    it('does not call captureException for a 404 error', () => {
+      const filter = makeFilter();
+      const { host } = makeHost();
+      const exception = new HttpException('Not found', HttpStatus.NOT_FOUND);
+
+      filter.catch(exception, host);
+
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
+
+    it('does not call captureException for a 401 error', () => {
+      const filter = makeFilter();
+      const { host } = makeHost();
+      const exception = new HttpException(
+        'Unauthorized',
+        HttpStatus.UNAUTHORIZED,
+      );
+
+      filter.catch(exception, host);
+
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
+
+    it('does not call captureException for a 422 validation error', () => {
+      const filter = makeFilter();
+      const { host } = makeHost();
+      const exception = new HttpException(
+        { message: 'Validation failed' },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+
+      filter.catch(exception, host);
+
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
   });
 });
