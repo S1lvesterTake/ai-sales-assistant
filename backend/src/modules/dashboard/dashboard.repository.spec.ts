@@ -1,5 +1,11 @@
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import * as schema from '../../database/schema';
 import { DatabaseService } from '../../database/database.service';
 import { DashboardRepository } from './dashboard.repository';
+
+const { chatSessions, chatMessages } = schema;
 
 const BIZ_ID = '019b9d80-0000-0000-0000-000000000001';
 
@@ -191,6 +197,59 @@ describe('DashboardRepository', () => {
       );
       const result = await repo.getRecentConversations(BIZ_ID);
       expect(result).toEqual([]);
+    });
+  });
+});
+
+describe('DashboardRepository – SQL generation', () => {
+  const pool = new Pool();
+  const db = drizzle(pool, { schema });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  describe('getRecentConversations inner subquery', () => {
+    it('has no duplicate column names in the SELECT clause', () => {
+      const builder = db
+        .select({
+          sessionId: sql<string>`${chatSessions.id}`.as('session_id'),
+          customerName: chatSessions.customerName,
+          sessionCreatedAt: sql<Date>`${chatSessions.createdAt}`.as(
+            'session_created_at',
+          ),
+          lastMessage: chatMessages.message,
+          lastMessageAt: sql<Date | null>`${chatMessages.createdAt}`.as(
+            'last_message_at',
+          ),
+          rn: sql<number>`ROW_NUMBER() OVER (
+            PARTITION BY ${chatSessions.id}
+            ORDER BY ${chatMessages.createdAt} DESC NULLS LAST,
+                     ${chatMessages.id} DESC NULLS LAST
+          )`.as('rn'),
+        })
+        .from(chatSessions)
+        .leftJoin(
+          chatMessages,
+          and(
+            eq(chatMessages.chatSessionId, chatSessions.id),
+            eq(chatMessages.role, 'customer'),
+          ),
+        )
+        .where(eq(chatSessions.businessProfileId, 'test-id'));
+
+      const { sql: generatedSql } = builder.toSQL();
+
+      const colNames = generatedSql
+        .slice(7, generatedSql.indexOf(' from '))
+        .split(/,(?![^(]*\))/)
+        .map((p) => {
+          const m = p.match(/as "([^"]+)"/i) ?? p.match(/"([^"]+)"$/);
+          return m?.[1] ?? p.trim();
+        });
+      const seen = new Set<string>();
+      const dupes = colNames.filter((c) => seen.size === seen.add(c).size);
+      expect(dupes).toEqual([]);
     });
   });
 });

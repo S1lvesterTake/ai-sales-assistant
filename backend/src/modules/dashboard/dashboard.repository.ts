@@ -123,17 +123,19 @@ export class DashboardRepository {
     // the latest message per session so sessions with no messages also appear.
     const ranked = this.database.db
       .select({
-        sessionId: chatSessions.id,
+        // Explicit SQL-level aliases are required for every column in this
+        // subquery. Drizzle does not emit AS aliases for schema column references
+        // inside subqueries — shared column names (id, created_at) across joined
+        // tables become ambiguous in the outer query at runtime. LEFT JOIN columns
+        // must also use sql<T | null> to preserve nullability through the raw
+        // sql template so the ?? fallback on map() remains type-enforced.
+        sessionId: sql<string>`${chatSessions.id}`.as('session_id'),
         customerName: chatSessions.customerName,
-        // Explicit SQL-level aliases are required here. Drizzle does not emit AS
-        // aliases for schema column references inside subqueries, so both
-        // chatSessions.createdAt and chatMessages.createdAt would become the bare
-        // column name "created_at", making the outer ORDER BY ambiguous at runtime.
         sessionCreatedAt: sql<Date>`${chatSessions.createdAt}`.as(
           'session_created_at',
         ),
         lastMessage: chatMessages.message,
-        lastMessageAt: sql<Date>`${chatMessages.createdAt}`.as(
+        lastMessageAt: sql<Date | null>`${chatMessages.createdAt}`.as(
           'last_message_at',
         ),
         rn: sql<number>`ROW_NUMBER() OVER (
