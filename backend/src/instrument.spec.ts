@@ -45,4 +45,22 @@ describe('initSentry', () => {
 
     expect(Sentry.init).not.toHaveBeenCalled();
   });
+
+  it('does not throw when Sentry.init throws (e.g. invalid DSN)', () => {
+    process.env.SENTRY_DSN = 'https://key@o123.ingest.sentry.io/456';
+    (Sentry.init as jest.Mock).mockImplementation(() => {
+      throw new Error('Invalid DSN');
+    });
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    expect(() => initSentry()).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Sentry] init failed, error capture disabled:',
+      expect.any(Error),
+    );
+
+    warnSpy.mockRestore();
+  });
 });
