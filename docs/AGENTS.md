@@ -186,6 +186,10 @@ _Filled progressively after sessions. Record what produced correct output and wh
 - ⚠️ "Add tests" without specifying which behavior to cover → produces coverage-padding tests rather than behavior tests.
 - ⚠️ Asking to "refactor and add feature" in the same prompt → mixing refactor and behavior change makes diffs hard to review. Split into two requests.
 
+**Patterns that work (added from Week 1 evals):**
+- ✅ Spec-first + 2-baris prompt outperform prompt panjang tanpa spec — session dashboard metrics: 35/35, 0 corrections
+- ✅ Grep method names dari source sebelum generate test prompt — eliminasi "function not found" errors
+
 ---
 
 ## 9. Skill Files
@@ -298,6 +302,17 @@ Before finishing, Claude must read every file it changed and answer:
 
 Report findings inline. If any checklist item is YES: fix before marking task complete.
 
+### Step 5 — Fill Eval Scorecard
+
+After PR is created, generate an empty scorecard:
+
+```bash
+cp evals/rubric.md evals/session-$(date +%Y-%m-%d)-$(git branch --show-current).md
+```
+
+Open the file and fill in the 7 scores based on what actually happened 
+in this session. Do this before moving to the next task.
+
 
 ## 11. Feature Implementation Order (Mandatory)
 
@@ -312,3 +327,57 @@ When implementing any new feature, always follow this exact sequence:
 7. Follow Post-Implementation Workflow (Section 10)
 
 Never skip steps. Never implement controller before repository.
+
+## 12. Logging Rules
+
+All backend code must use the injected Pino logger — never `console.log`.
+
+### Inject logger
+```typescript
+import { Logger } from 'nestjs-pino';
+
+@Injectable()
+export class YourService {
+  private readonly logger = new Logger(YourService.name);
+}
+```
+
+### Log levels
+| Level | When to use | Example |
+|---|---|---|
+| `this.logger.log()` | Normal operations | "Product created", "Request handled" |
+| `this.logger.warn()` | Expected failures | "JWT invalid", "Resource not found", "Validation failed" |
+| `this.logger.error()` | Unexpected failures | "DB connection lost", "Unhandled exception", "AI provider timeout" |
+| `this.logger.debug()` | Dev-only context | Never use in production paths |
+
+### Required fields on every error log
+```typescript
+this.logger.error({
+  correlationId,        // from request context via AsyncLocalStorage
+  module: 'ProductsService',
+  operation: 'findOne',
+  error: err.message,
+  stack: err.stack,
+});
+```
+
+### NEVER log
+- Passwords, tokens, API keys, `access_token_hash`
+- Full request bodies that may contain credentials
+- `businessProfileId` or `userId` in warn/error messages (internal IDs)
+- JWT token contents or raw Authorization header values
+
+### ALWAYS include
+- `correlationId` on every warn/error log line
+- Module name via `new Logger(ClassName.name)`
+- Operation name when logging inside a specific method
+
+### Format
+- **Production** (`NODE_ENV=production`): JSON — structured for Railway log aggregation
+- **Development**: pino-pretty — human-readable
+- Set via `PINO_PRETTY=true` env var in `.env` (never in production Railway vars)
+
+### What NOT to add logs for
+- Every repository call (too noisy) — only log at service layer
+- Successful DB queries — log only failures
+- Module initialization — NestJS already logs this

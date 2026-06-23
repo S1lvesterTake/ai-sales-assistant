@@ -190,3 +190,36 @@ Trend: improving / stable / declining
 | Efficiency | ≤ 3 corrections |
 | Self-Repair | ≥ 3 |
 | **Total target** | **≥ 28/35** |
+
+# Eval Session: Test Coverage Generation
+**Date:** 2026-06-22
+**Task:** Generate unit + integration tests untuk products, leads, whatsapp modules
+**Prompt used:** [paste prompt yang dipakai]
+
+| Dimension | Score (1–5) | Notes |
+|---|---|---|
+| 1. Intent Satisfaction | | |
+| 2. Functional Correctness | | |
+| 3. Security Correctness | | |
+| 4. Code Quality & Convention | | |
+| 5. Trajectory Quality | | |
+| 6. Efficiency | | Actual corrections: |
+| 7. Self-Repair | | |
+| **Total** | **/35** | |
+
+# Eval Session: Dashboard Metrics Feature
+**Date:** 2026-06-22
+**Task:** Implement dashboard metrics endpoint end-to-end dari spec
+**Prompt used:** "Read docs/dashboard-metrics-spec.md then implement 
+the feature following AGENTS.md sections 10 and 11."
+
+| Dimension | Score (1–5) | Notes |
+|---|---|---|
+| 1. Intent Satisfaction | | |
+| 2. Functional Correctness | | |
+| 3. Security Correctness | | |
+| 4. Code Quality & Convention | | |
+| 5. Trajectory Quality | | |
+| 6. Efficiency | | Actual corrections: |
+| 7. Self-Repair | | |
+| **Total** | **/35** | |
